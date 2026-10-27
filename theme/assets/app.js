@@ -486,9 +486,13 @@
     trees: { name: 'Trees & bagging', n: 5, blurb: 'Axis-aligned splits that capture non-linearity and interactions on their own. Bagging averages many trees to cut variance.' },
     boosting: { name: 'Gradient boosting', n: 6, blurb: 'Trees added one at a time, each fitted to the remaining errors. The usual winner on tabular data.' },
     neural: { name: 'Neural networks', n: 7, blurb: 'Learned representations. They need data and tuning, and pay off on long sequences and many related series.' },
-    classical: { name: 'Classical time series', n: 8, blurb: 'Statistical models of a single series\' level, trend, seasonality and autocorrelation. Hard to beat on short, clean series.' }
+    classical: { name: 'Classical time series', n: 8, blurb: 'Statistical models of a single series\' level, trend, seasonality and autocorrelation. Hard to beat on short, clean series.' },
+    foundation: { name: 'Foundation models', n: 9, blurb: 'Large networks pretrained on huge collections of time series. They forecast your series zero-shot: no training on your data, just inference.' },
+    anomaly: { name: 'Anomaly detection', n: 10, blurb: 'No target needed: they learn what normal looks like and score how far each row is from it. A true/false label, if you have one, is only used to measure them.' },
+    cluster: { name: 'Clustering', n: 11, blurb: 'Group similar rows without a target: segments, personas, regimes. Judged by how tight and well separated the groups are.' }
   };
-  RI.TASKS = { forecast: 'Forecasting', regression: 'Regression', binary: 'Binary classification', multiclass: 'Multiclass classification' };
+  RI.TASKS = { forecast: 'Forecasting', regression: 'Regression', binary: 'Binary classification', multiclass: 'Multiclass classification', anomaly: 'Anomaly detection', cluster: 'Clustering' };
+  RI.TASK_SHORT = { forecast: 'Forecast', regression: 'Regression', binary: 'Binary', multiclass: 'Multiclass', anomaly: 'Anomalies', cluster: 'Clusters' };
   RI.ROWS = { xs: '< 1k rows', s: '1k – 10k', m: '10k – 100k', l: '100k – 1M', xl: '> 1M rows' };
   RI.ROW_ORDER = ['xs', 's', 'm', 'l', 'xl'];
 
@@ -802,7 +806,151 @@
       assumptions: ['All series stationary (difference first)', 'Linear interactions', 'Few variables (parameters grow as k²p)'],
       params: [['maxlags', 'up to one season', 'Searched by information criterion'], ['ic', 'aic | bic', '']],
       pros: ['Models feedback between variables', 'Impulse-response analysis'], cons: ['Parameter explosion', 'Needs every variable forecast together'],
-      use: 'A few interacting macro or business indicators.', complexity: [T`O(n\,(kp)^2)`, T`O(h\,k^2p)`], related: ['arima'] }
+      use: 'A few interacting macro or business indicators.', complexity: [T`O(n\,(kp)^2)`, T`O(h\,k^2p)`], related: ['arima'] },
+
+    /* ---------------------------------------------------------------- more neural forecasters */
+    { slug: 'nbeats', name: 'N-BEATS', short: 'NBEATS', family: 'neural', tasks: ['forecast'], lib: 'PyTorch', pip: ['torch'],
+      power: 4.2, interp: 1.8, speed: 2.4, minRows: 'm', maxRows: 'xl', cat: false, miss: false, ivals: false, global: true, scale: true, tmpl: 'torch',
+      summary: 'Deep stacks of fully connected blocks. Each block forecasts part of the future and subtracts what it explained from its input, so the next block works on the remainder. No recurrence, no attention.',
+      eq: T`\begin{aligned} \mathbf h_\ell &= \mathrm{FC}^{4}_\ell(\mathbf x_\ell),\qquad \hat{\mathbf x}_\ell = V^{b}_\ell\,\mathbf h_\ell,\qquad \hat{\mathbf y}_\ell = V^{f}_\ell\,\mathbf h_\ell\\ \mathbf x_{\ell+1} &= \mathbf x_\ell - \hat{\mathbf x}_\ell,\qquad \hat{\mathbf y} = \textstyle\sum_\ell \hat{\mathbf y}_\ell \end{aligned}`,
+      eqNote: T`$\mathbf x_1$ is the lookback window of the target. Block $\ell$ explains a "backcast" $\hat{\mathbf x}_\ell$ of its input and adds a partial forecast $\hat{\mathbf y}_\ell$. The interpretable variant fixes $V$ to a polynomial (trend) or Fourier (seasonality) basis.`,
+      obj: T`\min_\theta \sum_{\text{windows}} \tfrac1h\textstyle\sum_{k=1}^{h} \ell_\delta\big(y_{t+k} - \hat y_{t+k}\big)`,
+      intuition: 'Doubly residual: the input path peels off what each block explained, the output path adds up the partial forecasts. Like boosting, but inside one network trained end to end. Drivers enter as extra inputs to every block (the NBEATSx idea).',
+      assumptions: ['Many training windows: long series or many related series', 'Scaled inputs'],
+      params: [['blocks', '3 – 30', 'Depth of the residual stack'], ['width', '256 – 512', 'Units per fully connected layer'], ['lookback', '2 – 7 × horizon', 'Input window']],
+      pros: ['Strong accuracy from a simple architecture', 'Fast to train: no recurrence', 'Interpretable variant splits trend and seasonality'], cons: ['Data-hungry', 'Point forecasts (intervals by conformal here)', 'Horizon fixed at training time'],
+      use: 'Many related series with plenty of history, when you want a strong deep model that trains quickly.', complexity: [T`O(n\,B\,(L+h)\,d\,\text{epochs})`, T`O(B\,d^2)`], related: ['tft', 'tcn', 'lstm'] },
+    { slug: 'tft', name: 'Temporal Fusion Transformer', short: 'TFT', family: 'neural', tasks: ['forecast'], lib: 'PyTorch', pip: ['torch'],
+      power: 4.4, interp: 2.2, speed: 1.1, minRows: 'l', maxRows: 'xl', cat: false, miss: false, ivals: true, global: true, scale: true, tmpl: 'torch',
+      summary: 'Variable-selection networks pick the useful inputs, an LSTM encoder–decoder reads the past and the known future, and interpretable attention looks back over the whole window. It outputs quantiles directly.',
+      eq: T`\tilde H = \tfrac1m\sum_{j=1}^{m}\operatorname{softmax}\!\Big(\frac{Q W_Q^{(j)}\,(K W_K^{(j)})^\top}{\sqrt{d}}\Big)\,V W_V,\qquad \operatorname{GRN}(\mathbf a) = \operatorname{LayerNorm}\big(\mathbf a + \operatorname{GLU}(W_1\operatorname{ELU}(W_2\mathbf a + \mathbf b_2) + \mathbf b_1)\big)`,
+      eqNote: T`The heads share one value projection $W_V$, so the averaged attention weights show which past steps mattered. Gated residual networks (GRN) can switch a whole component off when it doesn't help.`,
+      obj: T`\min_\theta \sum_t\sum_{\tau\in\{0.1,\,0.5,\,0.9\}}\sum_{k=1}^{h}\rho_\tau\big(y_{t+k} - \hat q_\tau(t,k)\big)`,
+      intuition: 'Built for the real forecasting setup: some inputs are known only in the past, some are known ahead (calendar, promos). Variable-selection weights and attention weights double as explanations.',
+      assumptions: ['Lots of windows: tens of thousands', 'A GPU helps a lot'],
+      params: [['hidden size', '16 – 256', 'Width of every GRN'], ['attention heads', '1 – 4', ''], ['dropout', '0.1 – 0.3', ''], ['quantiles', '0.1, 0.5, 0.9', 'Outputs and loss']],
+      pros: ['Quantile forecasts built in', 'Treats past-only and known-future inputs differently', 'Variable weights and attention explain it'], cons: ['Heavy to train', 'Many moving parts', 'Overkill for a few short series'],
+      use: 'Many series with rich drivers (promos, prices, weather) when you need probabilistic forecasts and some explanation.', complexity: [T`O(n\,(L+h)^2 d\,\text{epochs})`, T`O((L+h)^2 d)`], related: ['transformer', 'lstm', 'nbeats'] },
+
+    /* ---------------------------------------------------------------- foundation models (zero-shot) */
+    { slug: 'chronos', name: 'Chronos-2', short: 'Chronos', family: 'foundation', tasks: ['forecast'], lib: 'chronos-forecasting', pip: ['chronos-forecasting'],
+      power: 4.3, interp: 1.5, speed: 3.6, minRows: 'xs', maxRows: 'xl', cat: false, miss: true, ivals: true, global: true, scale: false, tmpl: 'fm',
+      summary: 'Amazon\'s pretrained forecaster. It reads the history of every series, plus past-only and known-ahead covariates, and returns quantile forecasts without any training on your data.',
+      eq: T`\hat q_\tau(T{+}1{:}T{+}h) = f_\theta\big(\operatorname{patch}(\tilde{\mathbf y}_{1:T}),\ \tilde{\mathbf X}_{1:T+h}\big),\qquad \tilde y_t = \frac{y_t - \mu}{\sigma}`,
+      eqNote: 'An encoder-only transformer over patches of the scaled history. Group attention lets the target, its covariates and (with cross-learning) related series share information. Many quantiles come out at once.',
+      obj: T`\min_\theta\ \mathbb E_{\text{series}\sim\mathcal D_{\text{pretrain}}}\sum_\tau\sum_{k=1}^{h}\rho_\tau\big(y_{T+k} - \hat q_\tau(T{+}k)\big)\quad\text{(done once, by Amazon)}`,
+      intuition: 'Like a language model that has read a vast number of time series. It recognises level, trend and seasonal shapes in your history and continues them. You only run inference.',
+      assumptions: ['Your series look like the kinds it was pretrained on', 'Regular timestamps without gaps'],
+      params: [['model', 'amazon/chronos-2 | chronos-bolt-small', 'Covariates vs. a smaller univariate model'], ['context_length', 'model default', 'How much history it reads'], ['cross_learning', 'False | True', 'Share information across series']],
+      pros: ['No training: forecasts in seconds', 'Quantiles out of the box', 'Uses covariates and related series'], cons: ['Downloads ~0.5 GB of weights once', 'Fine-tuning is possible but not in this listing', 'Can\'t learn a pattern your history doesn\'t show'],
+      use: 'A strong first forecast in minutes, a benchmark for your own models, or many series with little history each.', complexity: [T`0\ \text{(no training)}`, T`O(L^2 d)`], related: ['timesfm', 'transformer', 'naive'] },
+    { slug: 'timesfm', name: 'TimesFM 2.5', short: 'TimesFM', family: 'foundation', tasks: ['forecast'], lib: 'timesfm', pip: ['timesfm'],
+      power: 4.2, interp: 1.4, speed: 3.4, minRows: 'xs', maxRows: 'xl', cat: false, miss: true, ivals: true, global: true, scale: false, tmpl: 'fm',
+      summary: 'Google\'s decoder-only foundation model (200M parameters). It reads up to 16k past steps of each series and forecasts the mean plus deciles, zero-shot.',
+      eq: T`\mathbf o_j = \operatorname{Transformer}_{\text{causal}}\big(\operatorname{Res}(\tilde{\mathbf y}_{P(j-1)+1:Pj})\big),\qquad \hat{\mathbf y}_{Pj+1:Pj+H_o} = \operatorname{Res}(\mathbf o_j)`,
+      eqNote: T`Input patches of $P = 32$ steps; each output token predicts a longer patch of $H_o$ steps, so long horizons need few autoregressive steps. A separate head gives continuous quantiles.`,
+      obj: T`\min_\theta\ \sum_{\text{patches}} \tfrac{1}{H_o}\lVert \mathbf y - \hat{\mathbf y}\rVert_2^2 + \text{quantile loss}\quad\text{(pretraining)}`,
+      intuition: 'A GPT for numbers: it reads your history in chunks and writes the next chunk. Pretraining on a very large corpus of real and synthetic series gives it a feel for typical patterns.',
+      assumptions: ['Univariate here (covariates need its XReg extra)', 'Enough history for the patterns to show'],
+      params: [['max_context', '512 – 16384', 'History it reads'], ['max_horizon', '≥ your horizon', ''], ['use_continuous_quantile_head', 'True', 'Quantile forecasts']],
+      pros: ['Zero-shot, long contexts', 'Apache-2.0 weights (version 2.5)', 'Fast batched inference'], cons: ['Ignores your drivers in this listing', 'Large download', 'TimesFM 3.0 weights are non-commercial only'],
+      use: 'Long univariate histories (hourly, daily) when you want a strong forecast without building a model.', complexity: [T`0\ \text{(no training)}`, T`O(L^2 d / P^2)`], related: ['chronos', 'transformer'] },
+
+    /* ---------------------------------------------------------------- anomaly detection */
+    { slug: 'iforest', name: 'Isolation forest', short: 'iForest', family: 'anomaly', tasks: ['anomaly'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 3.8, interp: 2.8, speed: 4.6, minRows: 'xs', maxRows: 'xl', cat: false, miss: false, ivals: false, global: false, scale: false, tmpl: 'anom',
+      summary: 'Random trees that split on random features at random thresholds. Anomalies are few and different, so they get isolated in very few splits: a short path means an odd row.',
+      eq: T`s(\mathbf x, n) = 2^{-\mathbb E[h(\mathbf x)]/c(n)},\qquad c(n) = 2H(n-1) - \frac{2(n-1)}{n}`,
+      eqNote: T`$h(\mathbf x)$ is the path length that isolates $\mathbf x$ in one tree, $c(n)$ the average path length for $n$ points, $H$ the harmonic number. Scores near 1 are anomalies; well below 0.5 is normal.`,
+      obj: '', intuition: '"How many random questions does it take to single this row out?" A typical customer takes many. A card buying gold at 4 a.m. in another country takes two.',
+      assumptions: ['Anomalies are rare and differ in at least a few features', 'Differences along the axes (rotated structure is harder)'],
+      params: [['n_estimators', '100 – 500', 'More trees, steadier scores'], ['max_samples', '256 – 4096', 'Rows per tree: small is the point'], ['contamination', 'expected anomaly share', 'Only sets the flag threshold']],
+      pros: ['Fast, near-linear time', 'No scaling, no distance metric', 'Fine in high dimensions'], cons: ['Scores are relative, not probabilities', 'Misses anomalies that only show along diagonals'],
+      use: 'The default first detector for tabular data: transactions, logs, sensor snapshots.', complexity: [T`O(t\,\psi\log\psi)`, T`O(t\log\psi)`], related: ['lof', 'ocsvm', 'robustcov'] },
+    { slug: 'lof', name: 'Local outlier factor', short: 'LOF', family: 'anomaly', tasks: ['anomaly'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 3.4, interp: 3, speed: 2.8, minRows: 'xs', maxRows: 'l', cat: false, miss: false, ivals: false, global: false, scale: true, tmpl: 'anom',
+      summary: 'Compares the density around each row with the density around its neighbours. A point in a sparse spot next to a dense cluster stands out, even when global distances look normal.',
+      eq: T`\operatorname{LOF}_k(\mathbf x) = \frac{1}{|N_k(\mathbf x)|}\sum_{\mathbf o\in N_k(\mathbf x)}\frac{\operatorname{lrd}_k(\mathbf o)}{\operatorname{lrd}_k(\mathbf x)},\qquad \operatorname{lrd}_k(\mathbf x) = \Big(\tfrac{1}{|N_k(\mathbf x)|}\textstyle\sum_{\mathbf o\in N_k(\mathbf x)} \max\big(d_k(\mathbf o),\, d(\mathbf x,\mathbf o)\big)\Big)^{-1}`,
+      eqNote: T`$d_k(\mathbf o)$ is the distance from $\mathbf o$ to its $k$-th neighbour. LOF ≈ 1: as dense as the neighbours. LOF ≫ 1: an outlier.`,
+      obj: '', intuition: 'A house 2 km from the next is normal in the countryside and very odd in a city centre. LOF judges each point against its own neighbourhood.',
+      assumptions: ['Meaningful distances: scaled features', 'Low to moderate dimensions'],
+      params: [['n_neighbors', '10 – 50', 'Neighbourhood size'], ['metric', 'euclidean | manhattan', '']],
+      pros: ['Finds local anomalies among clusters of different density', 'Explains by neighbours'], cons: ['Slow on big data', 'Curse of dimensionality', 'Sensitive to k'],
+      use: 'Data with clusters of different density, where odd means odd for its neighbourhood.', complexity: [T`O(n\log n\,p)\ \text{to}\ O(n^2p)`, T`O(\log n\,p)`], related: ['knn', 'iforest'] },
+    { slug: 'ocsvm', name: 'One-class SVM', short: 'OCSVM', family: 'anomaly', tasks: ['anomaly'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 3.2, interp: 1.8, speed: 2, minRows: 'xs', maxRows: 'm', cat: false, miss: false, ivals: false, global: false, scale: true, tmpl: 'anom',
+      summary: 'Learns a boundary around the normal data in a kernel feature space. Points outside it are anomalies.',
+      eq: T`f(\mathbf x) = \operatorname{sign}\Big(\sum_i \alpha_i K(\mathbf x_i,\mathbf x) - \rho\Big)`, eqNote: T`$\nu$ is an upper bound on the share of training points left outside, and a lower bound on the share of support vectors.`,
+      obj: T`\min_{\mathbf w,\boldsymbol\xi,\rho}\ \tfrac12\lVert\mathbf w\rVert^2 + \frac{1}{\nu n}\sum_i\xi_i - \rho\quad\text{s.t.}\quad \mathbf w^\top\phi(\mathbf x_i)\ge\rho-\xi_i,\ \xi_i\ge0`,
+      intuition: 'Push the data away from the origin with the widest possible margin in feature space. Whatever lands on the origin\'s side looks unlike the training data.',
+      assumptions: ['Training data you trust to be mostly normal', 'Scaled, mostly numeric features'],
+      params: [['nu', '0.001 – 0.2', 'Expected outlier share'], ['gamma', '"scale" or 1e-4 – 1', 'RBF width']],
+      pros: ['Smooth, flexible boundary', 'Good novelty detector on clean data'], cons: [T`$O(n^2)$ training or worse`, 'Sensitive to gamma and scaling', 'Many anomalies in training distort it'],
+      use: 'Novelty detection on a few thousand clean, numeric rows.', complexity: [T`O(n^2p)\ \text{to}\ O(n^3)`, T`O(n_{sv}\,p)`], related: ['svm', 'iforest'] },
+    { slug: 'robustcov', name: 'Robust covariance (MCD)', short: 'MCD', family: 'anomaly', tasks: ['anomaly'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 2.6, interp: 4, speed: 4.2, minRows: 'xs', maxRows: 'xl', cat: false, miss: false, ivals: false, global: false, scale: true, tmpl: 'anom',
+      summary: 'Fits an ellipse to the bulk of the data with the Minimum Covariance Determinant, so outliers can\'t stretch it, then scores every row by its Mahalanobis distance.',
+      eq: T`d^2(\mathbf x) = (\mathbf x-\hat{\boldsymbol\mu})^\top\hat\Sigma^{-1}(\mathbf x-\hat{\boldsymbol\mu})\ \sim\ \chi^2_p\ \ \text{(if Gaussian)}`,
+      eqNote: T`$\hat{\boldsymbol\mu}, \hat\Sigma$ come from the $h$ rows whose covariance has the smallest determinant, so the outliers can't hide themselves.`,
+      obj: T`\hat H = \arg\min_{|H| = h}\ \det\hat\Sigma_H`,
+      intuition: 'The statistician\'s detector: how many standard deviations away is this row, once correlations are taken into account? Robust fitting stops the outliers from moving the yardstick.',
+      assumptions: ['One roughly elliptical (Gaussian-like) cloud of normal data', 'More rows than features'],
+      params: [['support_fraction', '0.5 – 1', 'Share of rows in the robust fit'], ['contamination', 'expected share', 'Flag threshold']],
+      pros: ['Fast and well understood', 'A χ² reference for distances', 'Easy to say which features deviate'], cons: ['Assumes one elliptical cluster', 'Poor with many one-hot categories'],
+      use: 'Mostly numeric, single-mode data: sensor readings, measurements, financial ratios.', complexity: [T`O(np^2 + p^3)`, T`O(p^2)`], related: ['iforest', 'ocsvm'] },
+    { slug: 'stl', name: 'STL residual detector', short: 'STL', family: 'anomaly', tasks: ['anomaly'], lib: 'statsmodels', pip: ['statsmodels'],
+      power: 3.4, interp: 4.7, speed: 4.3, minRows: 'xs', maxRows: 'l', cat: false, miss: false, ivals: false, global: false, scale: false, tmpl: 'anomts',
+      summary: 'Seasonal-trend decomposition (LOESS) splits a metric into trend, season and remainder. Points with an extreme remainder, judged with a robust z-score, are flagged.',
+      eq: T`y_t = T_t + S_t + R_t,\qquad z_t = \frac{R_t - \operatorname{median}(R)}{1.4826\,\operatorname{MAD}(R)},\qquad \text{flag} \iff |z_t| > z^*`,
+      eqNote: T`$1.4826\cdot\operatorname{MAD}$ estimates the standard deviation of Gaussian noise while ignoring the outliers themselves. $z^* = 3.5$ is a common cut-off.`,
+      obj: '', intuition: 'Low traffic on a Monday is not news if every Monday is low: that is seasonality. Remove the expected shape first, then look for surprises in what is left.',
+      assumptions: ['A regular seasonal period', 'At least two seasons of history', 'y is the metric you watch, t its time column'],
+      params: [['period', 'season length', '24, 7, 52, 12'], ['robust', 'True', 'LOESS that down-weights outliers'], ['z*', '3 – 5', 'Flag threshold']],
+      pros: ['Every flag explains itself: value vs. expected', 'No labels needed', 'Fast'], cons: ['One series at a time', 'One seasonal period', 'A level shift shows as a run of flags'],
+      use: 'Monitoring a metric over time: traffic, sales, load, latency, sensor readings.', complexity: [T`O(n)`, T`O(n)`], related: ['ets', 'iforest'] },
+
+    /* ---------------------------------------------------------------- clustering */
+    { slug: 'kmeans', name: 'k-means', short: 'kMeans', family: 'cluster', tasks: ['cluster'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 3, interp: 4.2, speed: 4.8, minRows: 'xs', maxRows: 'xl', cat: false, miss: false, ivals: false, global: false, scale: true, tmpl: 'clus',
+      summary: 'Places k centroids, assigns each row to the nearest one, and moves each centroid to the mean of its rows until nothing changes.',
+      eq: T`c(\mathbf x) = \arg\min_k\ \lVert\mathbf x - \boldsymbol\mu_k\rVert^2`, eqNote: 'Lloyd\'s algorithm alternates assignment and update. k-means++ seeding picks well-spread starting centroids.',
+      obj: T`\min_{\{C_k\},\{\boldsymbol\mu_k\}}\ \sum_{k=1}^{K}\sum_{\mathbf x_i\in C_k}\lVert\mathbf x_i - \boldsymbol\mu_k\rVert^2`,
+      intuition: 'Each cluster is summed up by one prototype row, "the average budget shopper". Easy to name, easy to explain.',
+      assumptions: ['Roughly round clusters of similar size', 'Scaled features', 'You choose k (here: by silhouette)'],
+      params: [['n_clusters', '2 – 12', 'Chosen by silhouette'], ['n_init', '"auto" or 10', 'Restarts against bad local optima']],
+      pros: ['Fast on millions of rows', 'Centroids are readable profiles', 'New rows assigned instantly'], cons: ['Needs k', 'Prefers round clusters', 'Sensitive to outliers and scaling'],
+      use: 'Customer or product segmentation into a handful of nameable groups.', complexity: [T`O(nKp\cdot\text{iters})`, T`O(Kp)`], related: ['gmm', 'agglo'] },
+    { slug: 'gmm', name: 'Gaussian mixture', short: 'GMM', family: 'cluster', tasks: ['cluster'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 3.3, interp: 3.6, speed: 3.8, minRows: 'xs', maxRows: 'l', cat: false, miss: false, ivals: false, global: false, scale: true, tmpl: 'clus',
+      summary: 'A soft k-means: the data is a mix of K Gaussians fitted by expectation–maximisation, and every row gets a probability for every cluster.',
+      eq: T`p(\mathbf x) = \sum_{k=1}^{K}\pi_k\,\mathcal N(\mathbf x\mid\boldsymbol\mu_k,\Sigma_k),\qquad r_{ik} = \frac{\pi_k\,\mathcal N(\mathbf x_i\mid\boldsymbol\mu_k,\Sigma_k)}{\sum_j\pi_j\,\mathcal N(\mathbf x_i\mid\boldsymbol\mu_j,\Sigma_j)}`,
+      eqNote: T`$r_{ik}$ is cluster $k$'s responsibility for row $i$. K is chosen by BIC.`,
+      obj: T`\max_{\pi,\mu,\Sigma}\ \sum_i\log\sum_k\pi_k\,\mathcal N(\mathbf x_i\mid\boldsymbol\mu_k,\Sigma_k),\qquad \text{BIC} = -2\log\hat L + d\log n`,
+      intuition: 'Clusters can be stretched and tilted, and a row between two of them says so (60/40) instead of being forced into one.',
+      assumptions: ['Clusters roughly Gaussian', 'Scaled features'],
+      params: [['n_components', '2 – 12', 'By BIC'], ['covariance_type', 'full | diag | tied | spherical', 'Shape freedom']],
+      pros: ['Soft memberships', 'Elliptical clusters', 'A likelihood for choosing K'], cons: ['Local optima', 'Many parameters with full covariances', 'Gaussian assumption'],
+      use: 'Overlapping segments, or when you need a membership probability.', complexity: [T`O(nKp^2\cdot\text{iters})`, T`O(Kp^2)`], related: ['kmeans', 'hdbscan'] },
+    { slug: 'hdbscan', name: 'HDBSCAN', short: 'HDBSCAN', family: 'cluster', tasks: ['cluster'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 3.6, interp: 3, speed: 3.2, minRows: 'xs', maxRows: 'l', cat: false, miss: false, ivals: false, global: false, scale: true, tmpl: 'clus',
+      summary: 'Density-based clustering: finds clusters of any shape and different densities, decides how many there are, and labels sparse points as noise.',
+      eq: T`d_{\text{mreach}}(\mathbf a,\mathbf b) = \max\big(\operatorname{core}_k(\mathbf a),\ \operatorname{core}_k(\mathbf b),\ d(\mathbf a,\mathbf b)\big)`,
+      eqNote: T`$\operatorname{core}_k$ is the distance to the $k$-th nearest neighbour. HDBSCAN builds a minimum spanning tree on this distance, condenses the hierarchy, and keeps the most stable clusters.`,
+      obj: T`\max_{\{C\}}\ \sum_C\sum_{\mathbf x\in C}\big(\lambda_{\mathbf x} - \lambda_{\text{birth}}(C)\big),\qquad \lambda = 1/d`,
+      intuition: 'Clusters are islands of high density in a sea of low density. Lower the sea level slowly and keep the islands that last longest.',
+      assumptions: ['Clusters are denser than the space between them', 'Scaled features, moderate dimensions'],
+      params: [['min_cluster_size', '5 – 500', 'Smallest group worth calling a cluster'], ['min_samples', '1 – 50', 'Higher = more conservative, more noise']],
+      pros: ['No k to choose', 'Any shape, varying density', 'A noise label for outliers'], cons: ['Struggles in high dimensions', 'No native predict: new rows go to their nearest neighbours here'],
+      use: 'Exploring segments when you don\'t know how many there are, or data with lots of noise.', complexity: [T`O(n\log n\,p)\ \text{to}\ O(n^2)`, T`O(\log n\,p)`], related: ['kmeans', 'lof'] },
+    { slug: 'agglo', name: 'Hierarchical clustering (Ward)', short: 'Ward', family: 'cluster', tasks: ['cluster'], lib: 'scikit-learn', pip: ['scikit-learn'],
+      power: 3.1, interp: 4.3, speed: 2.6, minRows: 'xs', maxRows: 'm', cat: false, miss: false, ivals: false, global: false, scale: true, tmpl: 'clus',
+      summary: 'Starts with every row as its own cluster and keeps merging the pair whose merge adds the least within-cluster variance. The result is a tree you can cut at any number of clusters.',
+      eq: T`\Delta(A,B) = \frac{|A|\,|B|}{|A|+|B|}\,\lVert\boldsymbol\mu_A - \boldsymbol\mu_B\rVert^2`, eqNote: 'Ward\'s criterion is the increase of the k-means objective caused by the merge. Other linkages use the minimum, maximum or average distance.',
+      obj: '', intuition: 'A family tree of your rows. Cut it high for a few broad groups, low for many fine ones; the dendrogram shows how solid each split is.',
+      assumptions: ['Scaled features', T`Up to a few tens of thousands of rows ($O(n^2)$ memory)`],
+      params: [['n_clusters', '2 – 12', 'Where to cut the tree'], ['linkage', 'ward | average | complete', 'Merge rule']],
+      pros: ['A whole hierarchy, not one partition', 'Deterministic', 'Readable dendrogram'], cons: [T`$O(n^2)$ memory: sample big data`, 'Merges are never undone'],
+      use: 'When the hierarchy itself is interesting (product families, taxonomies) and the data fits in memory.', complexity: [T`O(n^2\log n)`, T`O(Kp)`], related: ['kmeans', 'gmm'] }
   ];
   RI.MODEL = {};
   RI.MODELS.forEach(function (m, i) { m.idx = i; RI.MODEL[m.slug] = m; });
@@ -920,6 +1068,10 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     { slug: 'purged', name: 'Purged split with embargo', tags: ['time series', 'finance'], eq: T`\text{train} \cap [t_j - g,\ t_j + h + g] = \varnothing`,
       text: 'Leaves a gap between train and validation so overlapping labels (e.g. 30-day returns) or slow features can\'t leak across the boundary.', warn: '',
       folds: ['ttgvv.....', 'ttttgvv...', 'ttttttgvv.'], code: T`TimeSeriesSplit(n_splits=3, test_size=h, gap=g)` },
+    { slug: 'tuning', name: 'Cross-validated tuning (Optuna)', tags: ['tabular', 'time series'], eq: T`\boldsymbol\lambda^* = \arg\min_{\boldsymbol\lambda}\ \frac1k\sum_{j=1}^{k}\mathcal L\big(\hat f_{\boldsymbol\lambda}^{-j},\,F_j\big),\qquad \text{TPE: next } \boldsymbol\lambda \propto \frac{\ell(\boldsymbol\lambda)}{g(\boldsymbol\lambda)}`,
+      text: 'Each trial picks hyperparameters, scores them by cross-validation on the training rows, and reports back. Optuna\'s TPE sampler models good trials ($\ell$) and bad ones ($g$) separately and proposes values where good is likely. Tick "tune" in the Lab and the listing gets this search.', warn: 'Tune on the training rows only. The holdout (or the outer loop of nested CV) must never be seen by the search, or the reported score is optimistic.',
+      folds: ['vvtttttt..', 'ttvvtttt..', 'ttttvvtt..', 'ttttttvv..'], code: T`study = optuna.create_study(direction="maximize")
+study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean(), n_trials=40)` },
     { slug: 'nested', name: 'Nested cross-validation', tags: ['tabular'], eq: T`\text{outer: estimate} \;\big|\; \text{inner: tune}`,
       text: 'An inner loop tunes hyperparameters and an outer loop scores the whole tuning procedure. Unbiased, and expensive.', warn: 'Reporting the inner-loop score as your result is optimistic.',
       folds: ['vvtttttttt', 'ttvvtttttt', 'ttttvvtttt'], code: T`outer = cross_val_score(GridSearchCV(model, grid, cv=3), X, y, cv=5)` }
@@ -935,6 +1087,9 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     { slug: 'mase', name: 'MASE', long: 'Mean absolute scaled error', kind: 'forecast', eq: T`\text{MASE} = \frac{\frac1h\sum_{k=1}^{h}|y_{T+k}-\hat y_{T+k}|}{\frac{1}{T-m}\sum_{t=m+1}^{T}|y_t - y_{t-m}|}`, text: 'Your MAE divided by the in-sample seasonal naïve MAE. Below 1 means you beat the naïve baseline. Comparable across series.', code: T`mae / np.mean(np.abs(y_train[m:] - y_train[:-m]))` },
     { slug: 'pinball', name: 'Pinball loss', long: 'Quantile loss', kind: 'forecast', eq: T`L_\tau(y,\hat q) = \max\big(\tau(y-\hat q),\ (\tau-1)(y-\hat q)\big)`, text: 'Scores a quantile forecast. Averaged over many τ it approximates the CRPS.', code: T`mean_pinball_loss(y, q, alpha=0.9)` },
     { slug: 'coverage', name: 'Interval coverage', long: 'Empirical coverage', kind: 'forecast', eq: T`\hat c = \frac1n\sum_i \mathbb 1\big[\,l_i \le y_i \le u_i\,\big]`, text: 'A 90% interval should contain about 90% of the actuals. Report it with the average width: narrow and well calibrated is the goal.', code: T`np.mean((y >= lo) & (y <= hi))` },
+    { slug: 'precision-k', name: 'Precision@k', long: 'Precision at k', kind: 'anomaly', eq: T`P@k = \frac{\big|\{\text{top-}k \text{ scores}\}\cap\{\text{true anomalies}\}\big|}{k}`, text: 'Of the k rows the detector ranks as most anomalous, how many really are? Set k to what your team can review in a day. Needs a few labelled anomalies.', code: T`top = np.argsort(-score)[:k]; precision_at_k = y[top].mean()` },
+    { slug: 'silhouette', name: 'Silhouette', long: 'Silhouette coefficient', kind: 'clustering', eq: T`s(i) = \frac{b(i) - a(i)}{\max\{a(i),\, b(i)\}}`, text: '$a(i)$ is the mean distance from row $i$ to its own cluster, $b(i)$ to the nearest other cluster. Near 1: tight, well separated; near 0: on a border; negative: probably in the wrong cluster.', code: T`silhouette_score(X, labels)` },
+    { slug: 'davies-bouldin', name: 'Davies–Bouldin', long: 'Davies–Bouldin index', kind: 'clustering', eq: T`\text{DB} = \frac1K\sum_{k=1}^{K}\max_{j\ne k}\frac{\sigma_k + \sigma_j}{\lVert\boldsymbol\mu_k - \boldsymbol\mu_j\rVert}`, text: 'Average worst-case ratio of cluster spread to centroid distance. Lower is better; 0 is perfect.', code: T`davies_bouldin_score(X, labels)` },
     { slug: 'accuracy', name: 'Accuracy', long: 'Accuracy & balanced accuracy', kind: 'classification', eq: T`\text{BA} = \frac1K\sum_k \frac{TP_k}{TP_k + FN_k}`, text: 'Plain accuracy misleads with imbalanced classes (99% by always saying "no"). Balanced accuracy averages recall per class.', code: T`balanced_accuracy_score(y, p)` },
     { slug: 'f1', name: 'F1', long: 'Precision, recall, F1', kind: 'classification', eq: T`F_1 = \frac{2PR}{P+R},\quad P = \frac{TP}{TP+FP},\ R = \frac{TP}{TP+FN}`, text: 'Precision: how many flagged cases are real. Recall: how many real cases get flagged. F1 is their harmonic mean.', code: T`f1_score(y, p, average="macro")` },
     { slug: 'auc', name: 'ROC AUC', long: 'Area under the ROC curve', kind: 'classification', eq: T`\text{AUC} = P\big(s(\mathbf x^+) > s(\mathbf x^-)\big)`, text: 'The probability that a random positive is scored above a random negative. Threshold-free; 0.5 = coin flip.', code: T`roc_auc_score(y, proba)` },
@@ -1094,7 +1249,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     var num = function (v, lo, hi, d) { v = parseFloat(v); return isNaN(v) ? d : Math.max(lo, Math.min(hi, v)); };
     return { columns: cols, task: RI.TASKS[s.task] ? s.task : 'regression', freq: RI.FREQ[s.freq] ? s.freq : 'D', horizon: Math.round(num(s.horizon, 1, 1000, 14)),
       rows: RI.ROWS[s.rows] ? s.rows : 'm', weights: { acc: num(w.acc, 0, 1, 1 / 3), interp: num(w.interp, 0, 1, 1 / 3), speed: num(w.speed, 0, 1, 1 / 3) },
-      intervals: !!s.intervals, missing: !!s.missing, file: String(s.file || 'data.csv').slice(0, 120) };
+      intervals: !!s.intervals, missing: !!s.missing, tune: !!s.tune, file: String(s.file || 'data.csv').slice(0, 120) };
   };
   RI.FREQ = {
     H: { name: 'Hourly', season: 24, lags: [1, 2, 3, 24, 48, 168], wins: [24, 168], alias: 'h', look: 168, unit: 'hours' },
@@ -1129,12 +1284,15 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
   RI.problem = function (spec) {
     var d = RI.derive(spec);
     if (!spec.columns || !spec.columns.length) return 'Paste a header row to begin.';
-    if (!d.target) return 'Mark one column as the target y (what you want to predict).';
+    var unsup = spec.task === 'anomaly' || spec.task === 'cluster';
+    if (!d.target && !unsup) return 'Mark one column as the target y (what you want to predict).';
     if (spec.columns.filter(function (c) { return c.role === 'target'; }).length > 1) return 'Only one target, please: y is a single column.';
     if (spec.task === 'forecast' && !d.time) return 'Forecasting needs a time index t: mark your date column as Time.';
     if (spec.task === 'forecast' && d.targetType !== 'numeric' && d.targetType !== 'boolean') return 'Forecasting needs a numeric target.';
     if (spec.task === 'regression' && d.targetType !== 'numeric') return 'Regression needs a numeric target. Switch the task to classification?';
-    if (spec.task !== 'forecast' && !d.nFeat && !d.time) return 'Add at least one feature x to learn from.';
+    if (spec.task === 'cluster' && !d.nFeat) return 'Clustering needs at least one feature x to group rows by.';
+    if (spec.task === 'anomaly' && !d.nFeat && !(d.time && d.targetType === 'numeric')) return 'Add features x to check, or a time column t and the metric y you watch.';
+    if (!unsup && spec.task !== 'forecast' && !d.nFeat && !d.time) return 'Add at least one feature x to learn from.';
     return null;
   };
 
@@ -1148,6 +1306,8 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     RI.MODELS.forEach(function (m) {
       if (m.tasks.indexOf(spec.task) < 0) return;
       if (m.slug === 'var' && (d.num.length + d.bool.length) < 1) return;
+      if (m.slug === 'stl' && !(d.time && d.targetType === 'numeric')) return;
+      if (m.tmpl === 'anom' && !d.nFeat && d.targetType !== 'numeric') return;
       var adj = [];
       var add = function (v, text) { if (v) adj.push({ v: v, text: text }); };
       if (ri < RI.ROW_ORDER.indexOf(m.minRows)) add(-14, 'Wants more data than ' + RI.ROWS[spec.rows]);
@@ -1157,6 +1317,11 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       if (d.cat.length && m.cat && m.tmpl === 'tab') add(2 + Math.min(d.cat.length, 3), 'Native categorical handling (' + d.cat.length + ')');
       if (d.txt.length && m.tmpl !== 'tab') add(-3, 'Ignores your text columns');
       if (d.key.length && m.interp >= 4.3) add(2, 'You can read how your ★ drivers act');
+      if (spec.tune) {
+        if (!RI.tunable(spec, m)) add(0.001, 'Nothing to tune: ' + (m.tmpl === 'fm' ? 'zero-shot' : spec.task === 'anomaly' && m.tmpl === 'anom' ? 'tuning needs a true/false label y' : 'it fits its own parameters'));
+        else if (m.family === 'boosting' || m.family === 'neural') add(3, 'Many knobs: tuning pays off most here');
+        if (m.speed <= 2 && RI.tunable(spec, m)) add(-2, 'Every trial retrains a slow model');
+      }
       if (fc) {
         var drivers = d.known.length + d.past.length + d.cat.length;
         if (d.groups.length) add(m.global ? 6 : -4, m.global ? 'One global model learns across all series' : 'Fits a separate model per series');
@@ -1166,6 +1331,16 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
         if (spec.freq === 'H' && m.slug === 'arima') add(-8, 'Seasonal ARIMA is slow with 24-step seasons');
         if (spec.horizon > 3 * Math.max(f.season, 4) && m.tmpl === 'tab') add(-3, 'Long horizon: recursive errors compound');
         if (m.slug === 'naive') add(0.001, 'The benchmark every model has to beat');
+      } else if (spec.task === 'anomaly') {
+        if (m.slug === 'stl') add(8, 'Your metric over time: remove the season, flag surprises');
+        if (d.time && m.tmpl === 'anom') add(-2, 'Treats rows as independent (time only as calendar parts)');
+        if (d.cat.length > 2 && m.slug === 'robustcov') add(-5, 'One-hot categories break the ellipse');
+        if (d.num.length + d.bool.length > 30 && (m.slug === 'lof' || m.slug === 'ocsvm')) add(-5, 'Distances blur in high dimensions');
+        if (m.slug === 'iforest') add(2, 'The usual first detector');
+      } else if (spec.task === 'cluster') {
+        if (['l', 'xl'].indexOf(spec.rows) >= 0 && m.slug === 'kmeans') add(4, 'Scales to millions of rows');
+        if (m.slug === 'hdbscan') add(2, 'Finds the number of clusters itself, and flags noise');
+        if (d.cat.length > d.num.length && m.slug !== 'kmeans') add(-2, 'Mostly categorical: distances get coarse');
       } else {
         if (spec.rows === 'xs' && m.family === 'boosting' && m.slug !== 'catboost') add(-4, 'Can overfit very small data');
         if (d.num.length + d.bool.length > 30 && m.slug === 'knn') add(-6, 'Curse of dimensionality');
@@ -1179,6 +1354,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       if (['lgbm', 'catboost', 'hgb'].indexOf(m.slug) >= 0) badges.push(['Strong default', 'brand']);
       if (m.interp >= 4.3) badges.push(['Interpretable', 'good']);
       if (m.ivals) badges.push(['Uncertainty', 'warn']);
+      if (m.tmpl === 'fm') badges.push(['Zero-shot', 'brand']);
       out.push({ model: m, score: score, base: base, parts: parts, adj: adj.filter(function (a) { return Math.abs(a.v) >= 0.5 || a.v === 0.001; }), badges: badges });
     });
     out.sort(function (a, b) { return b.score - a.score; });
@@ -1227,19 +1403,86 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     mlp: { imp: 'from sklearn.neural_network import MLPClassifier, MLPRegressor', reg: 'MLPRegressor(hidden_layer_sizes=(128, 64), alpha=1e-4, early_stopping=True, max_iter=500, random_state=SEED)', clf: 'MLPClassifier(hidden_layer_sizes=(128, 64), alpha=1e-4, early_stopping=True, max_iter=500, random_state=SEED)' }
   };
 
+  /* ---------- cross-validated tuning (Optuna): search spaces and shared Python pieces */
+  var LR = '"learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True)';
+  var SUB = ['"subsample": trial.suggest_float("subsample", 0.5, 1.0)', '"colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 1.0)', '"reg_lambda": trial.suggest_float("reg_lambda", 1e-3, 10.0, log=True)'];
+  var FOREST = ['"max_features": trial.suggest_float("max_features", 0.2, 1.0)', '"min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 20, log=True)', '"max_depth": trial.suggest_categorical("max_depth", [None, 8, 16, 32])'];
+  var LGB = [LR, '"num_leaves": trial.suggest_int("num_leaves", 8, 256, log=True)', '"min_child_samples": trial.suggest_int("min_child_samples", 5, 100, log=True)'].concat(SUB);
+  var SPACE = {
+    ridge: ['"alpha": trial.suggest_float("alpha", 1e-3, 1e3, log=True)'],
+    lasso: ['"alpha": trial.suggest_float("alpha", 1e-4, 1.0, log=True)'],
+    enet: ['"alpha": trial.suggest_float("alpha", 1e-4, 1.0, log=True)', '"l1_ratio": trial.suggest_float("l1_ratio", 0.05, 0.95)'],
+    logreg: ['"C": trial.suggest_float("C", 1e-3, 100.0, log=True)'],
+    glm: ['"alpha": trial.suggest_float("alpha", 1e-4, 1.0, log=True)'],
+    knn: ['"n_neighbors": trial.suggest_int("n_neighbors", 3, 60, log=True)', '"weights": trial.suggest_categorical("weights", ["uniform", "distance"])'],
+    svm: ['"C": trial.suggest_float("C", 0.1, 100.0, log=True)', '"gamma": trial.suggest_float("gamma", 1e-4, 1.0, log=True)'],
+    nb: ['"var_smoothing": trial.suggest_float("var_smoothing", 1e-12, 1e-6, log=True)'],
+    tree: ['"max_depth": trial.suggest_int("max_depth", 2, 16)', '"min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 100, log=True)'],
+    rf: FOREST, extra: FOREST,
+    hgb: [LR, '"max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 8, 128, log=True)', '"min_samples_leaf": trial.suggest_int("min_samples_leaf", 5, 100, log=True)', '"l2_regularization": trial.suggest_float("l2_regularization", 1e-3, 10.0, log=True)'],
+    xgb: [LR, '"max_depth": trial.suggest_int("max_depth", 3, 10)', '"min_child_weight": trial.suggest_float("min_child_weight", 1.0, 20.0, log=True)'].concat(SUB),
+    lgbm: LGB, qgbm: LGB,
+    catboost: [LR, '"depth": trial.suggest_int("depth", 4, 10)', '"l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1.0, 30.0, log=True)', '"verbose": 0  # quiet during the search'],
+    mlp: ['"hidden_layer_sizes": (trial.suggest_int("width", 32, 256, log=True),) * trial.suggest_int("layers", 1, 3)', '"alpha": trial.suggest_float("alpha", 1e-6, 1e-2, log=True)', '"learning_rate_init": trial.suggest_float("learning_rate_init", 1e-4, 1e-2, log=True)'],
+    // classical forecasters (fit_forecast(hist, fut, params))
+    arima: ['"order": (trial.suggest_int("p", 0, 3), trial.suggest_int("d", 0, 1), trial.suggest_int("q", 0, 3))', '"seasonal": trial.suggest_categorical("seasonal", [True, False])'],
+    ets: ['"trend": trial.suggest_categorical("trend", ["add", None])', '"damped": trial.suggest_categorical("damped", [True, False])', '"seasonal": trial.suggest_categorical("seasonal", ["add", "mul", None])'],
+    theta: ['"theta": trial.suggest_float("theta", 0.5, 4.0)'],
+    prophet: ['"changepoint_prior_scale": trial.suggest_float("changepoint_prior_scale", 1e-3, 0.5, log=True)', '"seasonality_prior_scale": trial.suggest_float("seasonality_prior_scale", 0.01, 10.0, log=True)', '"seasonality_mode": trial.suggest_categorical("seasonality_mode", ["additive", "multiplicative"])'],
+    var: ['"maxlags": trial.suggest_int("maxlags", 1, max(2, SEASON))'],
+    // networks
+    torch: ['"hidden": trial.suggest_categorical("hidden", [32, 64, 128])', '"lr": trial.suggest_float("lr", 1e-4, 3e-3, log=True)'],
+    // anomaly detectors (scored against the label)
+    iforest: ['"n_estimators": trial.suggest_int("n_estimators", 100, 500, step=50)', '"max_samples": trial.suggest_int("max_samples", 64, 2048, log=True)', '"max_features": trial.suggest_float("max_features", 0.3, 1.0)'],
+    lof: ['"n_neighbors": trial.suggest_int("n_neighbors", 5, 100, log=True)'],
+    ocsvm: ['"nu": trial.suggest_float("nu", 1e-3, 0.3, log=True)', '"gamma": trial.suggest_float("gamma", 1e-4, 1.0, log=True)'],
+    robustcov: ['"support_fraction": trial.suggest_float("support_fraction", 0.5, 1.0)'],
+    // clustering (scored by silhouette)
+    kmeans: ['"n_clusters": trial.suggest_int("n_clusters", 2, 12)'],
+    gmm: ['"n_components": trial.suggest_int("n_components", 2, 12)', '"covariance_type": trial.suggest_categorical("covariance_type", ["full", "diag", "tied", "spherical"])'],
+    hdbscan: ['"min_cluster_size": trial.suggest_int("min_cluster_size", 5, 200, log=True)', '"min_samples": trial.suggest_int("min_samples", 1, 50, log=True)'],
+    agglo: ['"n_clusters": trial.suggest_int("n_clusters", 2, 12)', '"linkage": trial.suggest_categorical("linkage", ["ward", "average", "complete"])']
+  };
+  /* Can the "cross-validated tuning" option do anything for this model on this data? */
+  RI.tunable = function (spec, m) {
+    if (!m || m.tmpl === 'fm' || m.tmpl === 'anomts') return false;
+    if (m.tmpl === 'anom') return RI.derive(spec).targetType === 'boolean';
+    return !!SPACE[m.tmpl === 'torch' ? 'torch' : m.slug];
+  };
+  function tuneConfig(trials, timeout, folds, what) {
+    return ['TUNE = True  # ' + what + '; False = keep the defaults', 'TUNE_TRIALS = ' + trials + '  # Optuna trials',
+      'TUNE_TIMEOUT = ' + timeout + '  # seconds: the search stops at whichever limit comes first'].concat(folds ? ['FOLDS = ' + folds] : []);
+  }
+  function spaceFn(lines) {
+    return ['def search_space(trial):', '    """The hyperparameters Optuna explores (typical ranges from the RoboIntern Atlas)."""', '    return {']
+      .concat(lines.map(function (l) { var i = l.indexOf('  #'); return i > 0 ? '        ' + l.slice(0, i) + ',' + l.slice(i) : '        ' + l + ','; }))
+      .concat(['    }', '', '']);
+  }
+  var WITH_PARAMS = ['def with_params(model, params):', '    """Apply hyperparameters to a fresh model (to the estimator inside the pipeline, if there is one)."""',
+    '    if hasattr(model, "named_steps"):', '        return model.set_params(**{"model__" + k: v for k, v in params.items()})', '    return model.set_params(**params)', '', ''];
+  function studyLines(direction, what) {
+    return ['    optuna.logging.set_verbosity(optuna.logging.WARNING)',
+      '    study = optuna.create_study(direction="' + direction + '", sampler=optuna.samplers.TPESampler(seed=SEED))',
+      '    study.optimize(objective, n_trials=TUNE_TRIALS, timeout=TUNE_TIMEOUT)',
+      '    best = search_space(optuna.trial.FixedTrial(study.best_params))',
+      '    print(f"  best ' + what + ' {study.best_value:.4f} after {len(study.trials)} trials:")',
+      '    for k, v in best.items():', '        print(f"    {k} = {v}")', '    return best'];
+  }
+
   function header(spec, m, d, title, lines) {
-    var task = { forecast: 'Forecast ' + spec.horizon + ' ' + RI.FREQ[spec.freq].unit + ' ahead', regression: 'Regression', binary: 'Binary classification', multiclass: 'Multiclass classification' }[spec.task];
-    return ['"""', title, '', 'Model:  ' + m.name + ' (' + m.lib + ')', 'Task:   ' + task + ', target `' + d.target + '`',
+    var task = { forecast: 'Forecast ' + spec.horizon + ' ' + RI.FREQ[spec.freq].unit + ' ahead', regression: 'Regression', binary: 'Binary classification', multiclass: 'Multiclass classification', anomaly: 'Anomaly detection', cluster: 'Clustering' }[spec.task];
+    var what = spec.task === 'cluster' ? (d.target ? ', `' + d.target + '` only describes the clusters' : '') : spec.task === 'anomaly' ? (d.target ? (d.targetType === 'boolean' ? ', label `' + d.target + '` only to measure' : ', watching `' + d.target + '`') : '') : ', target `' + d.target + '`';
+    return ['"""', title, '', 'Model:  ' + m.name + ' (' + m.lib + ')', 'Task:   ' + task + what,
       'Data:   ' + spec.file + ' (' + spec.columns.length + ' described columns)', '',
       'Written by RoboIntern on ' + today() + '. Read it, run it, change it: it is yours.'].concat(lines || []).concat(['"""']).join('\n');
   }
   function boolParse() {
     return 'TRUTHY = {"1": 1.0, "1.0": 1.0, "true": 1.0, "t": 1.0, "yes": 1.0, "y": 1.0,\n          "0": 0.0, "0.0": 0.0, "false": 0.0, "f": 0.0, "no": 0.0, "n": 0.0}';
   }
-  function req(m, extra) {
+  function req(m, extra, tuned) {
     var r = ['numpy>=1.24', 'pandas>=2.0'].concat(extra || []);
-    var map = { 'scikit-learn': 'scikit-learn>=1.4', xgboost: 'xgboost>=2.0', lightgbm: 'lightgbm>=4.0,!=4.7.0  # 4.7.0 crashes on Windows with pandas input', catboost: 'catboost>=1.2', statsmodels: 'statsmodels>=0.14', prophet: 'prophet>=1.1', torch: 'torch>=2.1' };
-    (m.pip || []).forEach(function (p) { r.push(map[p] || p); });
+    var map = { 'scikit-learn': 'scikit-learn>=1.4', xgboost: 'xgboost>=2.0', lightgbm: 'lightgbm>=4.0,!=4.7.0  # 4.7.0 crashes on Windows with pandas input', catboost: 'catboost>=1.2', statsmodels: 'statsmodels>=0.14', prophet: 'prophet>=1.1', torch: 'torch>=2.1', optuna: 'optuna>=3.6', 'chronos-forecasting': 'chronos-forecasting>=2.2', timesfm: 'timesfm[torch]>=2.0' };
+    (m.pip || []).concat(tuned ? ['optuna'] : []).forEach(function (p) { r.push(map[p] || p); });
     return '# pip install -r requirements.txt\n' + uniq(r).join('\n') + '\n';
   }
 
@@ -1256,10 +1499,14 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     if (d.keyCat.length >= 2) engCat.push(d.keyCat[0] + '__' + d.keyCat[1]);
     var text = (m.slug === 'catboost' && !clf) ? [] : d.txt;
     var ivals = spec.intervals && !clf;
+    var tuned = spec.tune && RI.tunable(spec, m), cvName = d.time ? 'TimeSeriesSplit' : clf ? 'StratifiedKFold' : 'KFold';
+    var scoring = !clf ? 'neg_mean_absolute_error' : bin ? 'roc_auc' : 'balanced_accuracy';
     var L = [];
-    L.push(header(spec, m, d, title, ['', 'Run:', '    pip install -r requirements.txt', '    python train.py             # evaluates on a holdout, then trains on everything -> model.joblib',
+    L.push(header(spec, m, d, title, ['', 'Run:', '    pip install -r requirements.txt', '    python train.py             # ' + (tuned ? 'tunes by cross-validation, ' : '') + 'evaluates on a holdout, then trains on everything -> model.joblib',
       '    python predict.py new.csv   # predictions for new rows -> predictions.csv']));
-    L.push('import warnings', '', 'import joblib', 'import numpy as np', 'import pandas as pd');
+    L.push('import warnings', '', 'import joblib', 'import numpy as np');
+    if (tuned) L.push('import optuna');
+    L.push('import pandas as pd');
     if (!e.cat) L.push('from sklearn.compose import ColumnTransformer');
     if (!e.cat && text.length && e.dense) L.push('from sklearn.decomposition import TruncatedSVD');
     if (!e.cat && text.length) L.push('from sklearn.feature_extraction.text import TfidfVectorizer');
@@ -1267,7 +1514,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     L.push('from sklearn.inspection import permutation_importance');
     L.push(clf ? 'from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, log_loss, roc_auc_score'
       : 'from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score');
-    L.push('from sklearn.model_selection import train_test_split');
+    L.push('from sklearn.model_selection import ' + (tuned ? [cvName, 'cross_val_score', 'train_test_split'].sort().join(', ') : 'train_test_split'));
     if (!e.cat) L.push('from sklearn.pipeline import Pipeline');
     var pre = [];
     if (clf) pre.push('LabelEncoder');
@@ -1293,6 +1540,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     if (e.nan && m.slug === 'hgb') L.push('CAT_INDEX = list(range(len(NUM_FEATURES), len(NUM_FEATURES) + len(CAT_FEATURES)))  # columns after the numeric block');
     L.push('SEED = 42', 'TEST_SIZE = 0.2');
     if (ivals && !e.std && !e.quant) L.push('COVERAGE = 0.9  # split-conformal interval: about 90% of new values should land inside');
+    if (tuned) L = L.concat(tuneConfig(40, 900, 5, 'cross-validated Optuna search on the training rows first'), ['SCORING = ' + py(scoring) + '  # what the search maximises']);
     L.push('', boolParse(), '', '');
     L.push('def load(path):', '    df = pd.read_csv(path)', '    for c in DATES + ([TIME] if TIME else []):', '        df[c] = pd.to_datetime(df[c], errors="coerce")', '    return df', '', '');
     L.push('def add_features(df):', '    """Feature development. Runs on training data and on new data alike, so it never reads the target."""', '    df = df.copy()');
@@ -1338,7 +1586,16 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       else L.push('    return model.predict(X), None, None');
       L.push('', '');
     }
-    if (e.quant) L.push('def fit(X, y):', '    """Three LightGBM models on the pinball loss: P10, P50, P90."""', '    return {name: make_model(alpha).fit(X, y) for name, alpha in (("lo", 0.1), ("mid", 0.5), ("hi", 0.9))}', '', '');
+    if (tuned) {
+      L = L.concat(spaceFn(SPACE[m.slug].concat(m.slug === 'svm' && !clf ? ['"epsilon": trial.suggest_float("epsilon", 0.01, 1.0, log=True)'] : [])), WITH_PARAMS);
+      L.push('def tune(X, y):', '    """Cross-validated Optuna search on the training rows only, so the holdout stays unseen."""',
+        '    cv = ' + (d.time ? 'TimeSeriesSplit(FOLDS)  # rows are in time order: always validate on the future' : cvName + '(FOLDS, shuffle=True, random_state=SEED)'), '',
+        '    def objective(trial):', '        model = with_params(make_model(), search_space(trial))',
+        '        return np.nanmean(cross_val_score(model, X, y, cv=cv, scoring=SCORING))', '');
+      L = L.concat(studyLines('maximize', 'CV {SCORING}'), ['', '']);
+    }
+    if (e.quant) L.push('def fit(X, y' + (tuned ? ', params=None' : '') + '):', '    """Three LightGBM models on the pinball loss: P10, P50, P90."""', '    return {name: ' + (tuned ? 'with_params(make_model(alpha), params or {})' : 'make_model(alpha)') + '.fit(X, y) for name, alpha in (("lo", 0.1), ("mid", 0.5), ("hi", 0.9))}', '', '');
+    else if (tuned) L.push('def fit(X, y, params=None):', '    return with_params(make_model(), params or {}).fit(X, y)', '', '');
     else L.push('def fit(X, y):', '    return make_model().fit(X, y)', '', '');
     // split
     L.push('def split(df):');
@@ -1387,17 +1644,19 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       L.push('    print(f"{len(df):,} rows, classes: {list(encoder.classes_)[:12]}" + ("  (positive = \'" + encoder.classes_[1] + "\')" if len(encoder.classes_) == 2 else ""))');
       L.push('    train, test = split(df)');
       L.push('    y_train, y_test = encoder.transform(train[TARGET]), encoder.transform(test[TARGET])');
-      L.push('    model = fit(train[FEATURES], y_train)');
+      if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS}-fold CV, up to {TUNE_TRIALS} trials):")', '        params = tune(train[FEATURES], y_train)');
+      L.push('    model = fit(train[FEATURES], y_train' + (tuned ? ', params' : '') + ')');
       L.push('    print(f"\\nHoldout ({len(test):,} rows):")');
       L.push('    evaluate(model, test[FEATURES], y_test, y_train, encoder.classes_)');
       L.push('    print("\\nWhat the model leans on:")', '    explain(model, test[FEATURES], y_test)');
-      L.push('', '    final = fit(df[FEATURES], encoder.transform(df[TARGET]))  # all data for the model you deploy');
-      L.push('    joblib.dump({"model": final, "features": FEATURES, "encoder": encoder}, "model.joblib")');
+      L.push('', '    final = fit(df[FEATURES], encoder.transform(df[TARGET])' + (tuned ? ', params' : '') + ')  # all data for the model you deploy');
+      L.push('    joblib.dump({"model": final, "features": FEATURES, "encoder": encoder' + (tuned ? ', "params": params' : '') + '}, "model.joblib")');
     } else {
       L.push('    df[TARGET] = pd.to_numeric(df[TARGET], errors="coerce")', '    df = df.dropna(subset=[TARGET])');
       L.push('    print(f"{len(df):,} rows, {TARGET}: mean {df[TARGET].mean():,.3f}, sd {df[TARGET].std():,.3f}")');
       L.push('    train, test = split(df)');
-      L.push('    model = fit(train[FEATURES], train[TARGET])');
+      if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS}-fold CV, up to {TUNE_TRIALS} trials):")', '        params = tune(train[FEATURES], train[TARGET])');
+      L.push('    model = fit(train[FEATURES], train[TARGET]' + (tuned ? ', params' : '') + ')');
       L.push('    print(f"\\nHoldout ({len(test):,} rows):")');
       L.push('    resid = evaluate(model, test[FEATURES], test[TARGET].to_numpy(), train[TARGET])');
       L.push('    print("\\nWhat the model leans on:")', '    explain(model, test[FEATURES], test[TARGET].to_numpy())');
@@ -1406,8 +1665,8 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
         L.push('    n = len(resid)', '    q = float(np.quantile(np.abs(resid), min(1.0, COVERAGE * (n + 1) / n)))');
         L.push('    print(f"  {COVERAGE:.0%} interval: prediction +/- {q:,.4f}")');
       }
-      L.push('', '    final = fit(df[FEATURES], df[TARGET])  # all data for the model you deploy');
-      L.push('    joblib.dump({"model": final, "features": FEATURES' + (ivals && !e.std && !e.quant ? ', "conformal_q": q' : '') + '}, "model.joblib")');
+      L.push('', '    final = fit(df[FEATURES], df[TARGET]' + (tuned ? ', params' : '') + ')  # all data for the model you deploy');
+      L.push('    joblib.dump({"model": final, "features": FEATURES' + (ivals && !e.std && !e.quant ? ', "conformal_q": q' : '') + (tuned ? ', "params": params' : '') + '}, "model.joblib")');
     }
     L.push('    print("\\nSaved model.joblib. Next: python predict.py new.csv")', '', '');
     L.push('if __name__ == "__main__":', '    main()', '');
@@ -1431,7 +1690,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     }
     P.push('    result.to_csv(out, index=False)', '    print(f"Wrote {len(result):,} predictions to {out}")', '', '',
       'if __name__ == "__main__":', '    if len(sys.argv) < 2:', '        sys.exit("usage: python predict.py new.csv [predictions.csv]")', '    main(*sys.argv[1:3])', '');
-    return { train: train, predict: P.join('\n'), requirements: req(m, ['joblib>=1.3', 'scikit-learn>=1.4']) };
+    return { train: train, predict: P.join('\n'), requirements: req(m, ['joblib>=1.3', 'scikit-learn>=1.4'], tuned) };
   }
 
   /* ---------- shared pieces for every forecasting template */
@@ -1484,14 +1743,16 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     calByFreq = calByFreq.map(function (c) { return ['cal_' + c[0], c[1]]; });  // prefixed, so they never overwrite a column called "month"
     var keyKnown = d.keyNum.filter(function (c) { return d.known.indexOf(c) >= 0; }), keyPast = d.keyNum.filter(function (c) { return d.past.indexOf(c) >= 0; });
     var keyCols = keyKnown.map(function (c) { return c + '_delta'; }).concat(keyPast.map(function (c) { return c + '_lag' + (spec.horizon + f.season); }));
-    var ivals = spec.intervals, conformal = ivals && !e.std && !e.quant;
+    var ivals = spec.intervals, conformal = ivals && !e.std && !e.quant, tuned = spec.tune && RI.tunable(spec, m);
     var L = [];
     L.push(header(spec, m, d, title, ['', 'One global model for every series, on lag and calendar features. It forecasts recursively:',
       'each step\'s prediction becomes the next step\'s lag. Drivers you know in advance are used as-is;',
       'drivers you only learn afterwards are used through lags of at least HORIZON, so nothing leaks from the future.',
       '', 'Run:', '    pip install -r requirements.txt', '    python train.py                         # holdout = last HORIZON periods, then refit -> model.joblib',
       '    python predict.py [history.csv] [future.csv]   # next HORIZON periods -> forecast.csv']));
-    L.push('import warnings', '', 'import joblib', 'import numpy as np', 'import pandas as pd');
+    L.push('import warnings', '', 'import joblib', 'import numpy as np');
+    if (tuned) L.push('import optuna');
+    L.push('import pandas as pd');
     if (!e.cat) {
       L.push('from sklearn.compose import ColumnTransformer');
       if (!e.nan) L.push('from sklearn.impute import SimpleImputer');
@@ -1507,6 +1768,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       'LAGS = ' + JSON.stringify(f.lags), 'WINDOWS = ' + JSON.stringify(f.wins), 'SERIES = GROUPS or ["_series"]', 'SEED = 42']));
     if (d.txt.length || d.dates.length) L.push('# not used for forecasting: ' + d.txt.concat(d.dates).join(', '));
     if (ivals || e.quant) L.push('ALPHA = 0.1  # 90% intervals');
+    if (tuned) L = L.concat(tuneConfig(30, 1200, 3, 'Optuna search scored by a rolling-origin backtest (FOLDS cutoffs, HORIZON apart)'));
     L.push('', 'CALENDAR = ' + pyList(calByFreq.map(function (c) { return c[0]; }), 11));
     L.push('LAG_COLS = [f"lag_{k}" for k in LAGS] + [f"roll_mean_{w}" for w in WINDOWS] + [f"roll_std_{WINDOWS[-1]}"]');
     L.push('PAST_COLS = [f"{c}_lag{HORIZON}" for c in PAST]');
@@ -1542,9 +1804,11 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       L.push('    model = ' + est.replace('categorical_features=CAT_INDEX', 'categorical_features=list(range(len(NUM_FEATURES), len(FEATURES)))').replace(/\n {8}/g, '\n        '));
       L.push('    return Pipeline([("prep", prep), ("model", model)])', '', '');
     }
-    L.push('def fit(history):', '    feats = add_features(history).dropna(subset=[TARGET, "lag_1"])');
-    if (e.quant) L.push('    X, y = feats[FEATURES], feats[TARGET]', '    return {name: make_model(a).fit(X, y) for name, a in (("lo", ALPHA), ("mid", 0.5), ("hi", 1 - ALPHA))}');
-    else L.push('    return make_model().fit(feats[FEATURES], feats[TARGET])');
+    if (tuned) L = L.concat(spaceFn(SPACE[m.slug]), WITH_PARAMS);
+    L.push('def fit(history' + (tuned ? ', params=None' : '') + '):', '    feats = add_features(history).dropna(subset=[TARGET, "lag_1"])');
+    var mk = function (a) { return tuned ? 'with_params(make_model(' + a + '), params or {})' : 'make_model(' + a + ')'; };
+    if (e.quant) L.push('    X, y = feats[FEATURES], feats[TARGET]', '    return {name: ' + mk('a') + '.fit(X, y) for name, a in (("lo", ALPHA), ("mid", 0.5), ("hi", 1 - ALPHA))}');
+    else L.push('    return ' + mk('') + '.fit(feats[FEATURES], feats[TARGET])');
     L.push('', '');
     L.push('def predict_rows(model, X):');
     if (e.quant) L.push('    mid, lo, hi = (model[q].predict(X) for q in ("mid", "lo", "hi"))', '    return mid, np.minimum(lo, mid), np.maximum(hi, mid)');
@@ -1560,10 +1824,24 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       '        yhat, lo, hi = predict_rows(model, feats.loc[rows, FEATURES])', '        idx = feats.index[rows]', '        frame.loc[idx, TARGET] = yhat',
       '        if lo is not None:', '            frame.loc[idx, "lo"], frame.loc[idx, "hi"] = lo, hi',
       '    return frame[frame[TIME].isin(steps)].rename(columns={TARGET: "forecast"})', '', '');
+    if (tuned) {
+      L.push('def backtest(params, data):', '    """Rolling origin: for each of FOLDS cutoffs, fit on everything before it and forecast the next HORIZON',
+        '    periods recursively, exactly as in production. Returns the mean absolute error over all folds."""',
+        '    times = np.sort(data[TIME].unique())', '    errors = []', '    for k in range(FOLDS, 0, -1):',
+        '        start = len(times) - k * HORIZON', '        if start <= max(LAGS + WINDOWS):', '            continue  # not enough history before this cutoff',
+        '        hist = data[data[TIME] < times[start]]', '        fut = data[(data[TIME] >= times[start]) & (data[TIME] <= times[start + HORIZON - 1])]',
+        '        fc = recursive_forecast(fit(hist, params), hist, fut.drop(columns=[TARGET]))',
+        '        res = fut.merge(fc[SERIES + [TIME, "forecast"]], on=SERIES + [TIME])', '        errors.append(np.nanmean(np.abs(res[TARGET] - res["forecast"])))',
+        '    return float(np.mean(errors)) if errors else float("inf")', '', '',
+        'def tune(history):', '    """Optuna on the training history only; the final holdout stays unseen."""', '',
+        '    def objective(trial):', '        return backtest(search_space(trial), history)', '');
+      L = L.concat(studyLines('minimize', 'backtest MAE'), ['', '']);
+    }
     L.push('def main():', '    df = load(DATA).dropna(subset=[TARGET])', '    times = np.sort(df[TIME].unique())',
       '    cutoff = times[-HORIZON]', '    train, test = df[df[TIME] < cutoff], df[df[TIME] >= cutoff]',
-      '    print(f"{len(df):,} rows, {df.groupby(SERIES).ngroups} series, holdout from {pd.Timestamp(cutoff).date()}")',
-      '    model = fit(train)', '    fc = recursive_forecast(model, train, test.drop(columns=[TARGET]))',
+      '    print(f"{len(df):,} rows, {df.groupby(SERIES).ngroups} series, holdout from {pd.Timestamp(cutoff).date()}")');
+    if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS} backtest folds, up to {TUNE_TRIALS} trials):")', '        params = tune(train)');
+    L.push('    model = fit(train' + (tuned ? ', params' : '') + ')', '    fc = recursive_forecast(model, train, test.drop(columns=[TARGET]))',
       '    res = test.merge(fc[SERIES + [TIME, "forecast", "lo", "hi"]], on=SERIES + [TIME])', '    table = []',
       '    for key, s in res.groupby(SERIES, sort=False):', '        hist = rows_of(train, key)[TARGET].to_numpy(float)', '        y, f = s[TARGET].to_numpy(float), s["forecast"].to_numpy(float)',
       '        row = scores(y, f, seasonal_naive(hist, len(y)), hist)');
@@ -1571,8 +1849,8 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     L.push('        table.append(row)', '    report(table)');
     if (conformal) L.push('    # split conformal: |error| quantile on the holdout becomes the ± band', '    err = np.abs(res[TARGET] - res["forecast"]).dropna()',
       '    q = float(np.quantile(err, min(1.0, (1 - ALPHA) * (len(err) + 1) / len(err))))', '    print(f"  {1 - ALPHA:.0%} interval: forecast +/- {q:,.4f}")');
-    L.push('', '    final = fit(df)  # refit on everything, including the holdout');
-    L.push('    joblib.dump({"model": final' + (conformal ? ', "conformal_q": q' : '') + '}, "model.joblib")');
+    L.push('', '    final = fit(df' + (tuned ? ', params' : '') + ')  # refit on everything, including the holdout');
+    L.push('    joblib.dump({"model": final' + (conformal ? ', "conformal_q": q' : '') + (tuned ? ', "params": params' : '') + '}, "model.joblib")');
     L.push('    print("\\nSaved model.joblib. Next: python predict.py")', '', '', 'if __name__ == "__main__":', '    main()', '');
     var P = ['"""Forecast the next HORIZON periods of every series.', '', '    python predict.py [history.csv] [future.csv]', '',
       'history.csv  recent rows in the training format (default: ' + spec.file + '); at least ' + (Math.max.apply(null, f.lags.concat(f.wins)) + 1) + ' periods per series.',
@@ -1585,43 +1863,44 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     if (conformal) P.push('    q = bundle["conformal_q"]', '    fc["lo"], fc["hi"] = fc["forecast"] - q, fc["forecast"] + q');
     P.push('    result = fc[cols] if GROUPS else fc[cols].drop(columns=["_series"])', '    result.to_csv(out, index=False)',
       '    print(f"Wrote {len(result):,} forecasts to {out}")', '', '', 'if __name__ == "__main__":', '    main(*sys.argv[1:3])', '');
-    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m, ['joblib>=1.3', 'scikit-learn>=1.4']) };
+    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m, ['joblib>=1.3', 'scikit-learn>=1.4'], tuned) };
   }
 
   /* ---------- templates: classical per-series models (refit at forecast time) */
   var FIT = {
-    naive: { imp: [], body: ['    y = hist[TARGET].to_numpy(float)', '    h = len(fut)', '    yhat = seasonal_naive(y, h)',
+    naive: { imp: [], params: '{}', body: ['    y = hist[TARGET].to_numpy(float)', '    h = len(fut)', '    yhat = seasonal_naive(y, h)',
       '    m = SEASON if len(y) > SEASON else 1', '    e = y[m:] - y[:-m]  # in-sample seasonal-naive errors',
       '    q = np.nanquantile(np.abs(e), 1 - ALPHA) if len(e) else np.nan', '    width = q * np.sqrt(np.arange(h) // m + 1)  # wider each season further out',
       '    return yhat, yhat - width, yhat + width'] },
-    arima: { imp: ['from statsmodels.tsa.statespace.sarimax import SARIMAX'], body: [
-      '    y = hist[TARGET].to_numpy(float)', '    X = hist[KNOWN].ffill().fillna(0).to_numpy(float) if KNOWN else None',
+    arima: { imp: ['from statsmodels.tsa.statespace.sarimax import SARIMAX'], params: '{"order": (1, 1, 1), "seasonal": True}  # (p,d,q) and a (1,1,1)m seasonal part', body: [
+      '    p = dict(PARAMS, **(params or {}))', '    y = hist[TARGET].to_numpy(float)', '    X = hist[KNOWN].ffill().fillna(0).to_numpy(float) if KNOWN else None',
       '    Xf = fut[KNOWN].ffill().fillna(0).to_numpy(float) if KNOWN else None',
-      '    seasonal = (1, 1, 1, SEASON) if SEASON > 1 and len(y) >= 3 * SEASON else (0, 0, 0, 0)',
-      '    # (p,d,q)(P,D,Q)m: a sound default. Search orders with AIC (or pmdarima.auto_arima) if you have time.',
-      '    res = SARIMAX(y, exog=X, order=(1, 1, 1), seasonal_order=seasonal,', '                  enforce_stationarity=False, enforce_invertibility=False).fit(disp=False)',
+      '    seasonal = (1, 1, 1, SEASON) if p["seasonal"] and SEASON > 1 and len(y) >= 3 * SEASON else (0, 0, 0, 0)',
+      '    res = SARIMAX(y, exog=X, order=tuple(p["order"]), seasonal_order=seasonal,', '                  enforce_stationarity=False, enforce_invertibility=False).fit(disp=False)',
       '    fc = res.get_forecast(steps=len(fut), exog=Xf)', '    ci = np.asarray(fc.conf_int(alpha=ALPHA))', '    return np.asarray(fc.predicted_mean), ci[:, 0], ci[:, 1]'] },
-    ets: { imp: ['from statsmodels.tsa.exponential_smoothing.ets import ETSModel'], body: [
-      '    y = pd.Series(hist[TARGET].to_numpy(float)).interpolate().bfill()  # a Series: ETS predictions need an index',
-      '    seasonal = "add" if SEASON > 1 and len(y) >= 2 * SEASON else None',
-      '    res = ETSModel(y, error="add", trend="add", damped_trend=True, seasonal=seasonal,', '                   seasonal_periods=SEASON if seasonal else None).fit(disp=False)',
+    ets: { imp: ['from statsmodels.tsa.exponential_smoothing.ets import ETSModel'], params: '{"trend": "add", "damped": True, "seasonal": "add"}', body: [
+      '    p = dict(PARAMS, **(params or {}))', '    y = pd.Series(hist[TARGET].to_numpy(float)).interpolate().bfill()  # a Series: ETS predictions need an index',
+      '    seasonal = p["seasonal"] if SEASON > 1 and len(y) >= 2 * SEASON else None',
+      '    if seasonal == "mul" and y.min() <= 0:', '        seasonal = "add"  # multiplicative seasonality needs positive values',
+      '    res = ETSModel(y, error="add", trend=p["trend"], damped_trend=bool(p["damped"] and p["trend"]), seasonal=seasonal,', '                   seasonal_periods=SEASON if seasonal else None).fit(disp=False)',
       '    sf = res.get_prediction(start=len(y), end=len(y) + len(fut) - 1).summary_frame(alpha=ALPHA)',
       '    return sf["mean"].to_numpy(), sf["pi_lower"].to_numpy(), sf["pi_upper"].to_numpy()'] },
-    theta: { imp: ['from statsmodels.tsa.forecasting.theta import ThetaModel'], body: [
-      '    y = pd.Series(hist[TARGET].to_numpy(float)).interpolate().bfill().to_numpy()',
+    theta: { imp: ['from statsmodels.tsa.forecasting.theta import ThetaModel'], params: '{"theta": 2.0}  # 2 = the classic Theta method', body: [
+      '    p = dict(PARAMS, **(params or {}))', '    y = pd.Series(hist[TARGET].to_numpy(float)).interpolate().bfill().to_numpy()',
       '    period = SEASON if SEASON > 1 and len(y) >= 2 * SEASON else 1',
       '    res = ThetaModel(y, period=period, deseasonalize=period > 1).fit()', '    h = len(fut)',
-      '    pi = res.prediction_intervals(h, alpha=ALPHA)', '    return np.asarray(res.forecast(h)), pi["lower"].to_numpy(), pi["upper"].to_numpy()'] },
-    prophet: { imp: ['import logging', '', 'from prophet import Prophet', '', 'logging.getLogger("cmdstanpy").setLevel(logging.WARNING)'], body: [
-      '    d = pd.DataFrame({"ds": hist[TIME].to_numpy(), "y": hist[TARGET].to_numpy(float)})',
-      '    model = Prophet(interval_width=1 - ALPHA, daily_seasonality=FREQ == "h")',
+      '    pi = res.prediction_intervals(h, theta=p["theta"], alpha=ALPHA)', '    return np.asarray(res.forecast(h, theta=p["theta"])), pi["lower"].to_numpy(), pi["upper"].to_numpy()'] },
+    prophet: { imp: ['import logging', '', 'from prophet import Prophet', '', 'logging.getLogger("cmdstanpy").setLevel(logging.WARNING)'],
+      params: '{"changepoint_prior_scale": 0.05, "seasonality_prior_scale": 10.0, "seasonality_mode": "additive"}', body: [
+      '    p = dict(PARAMS, **(params or {}))', '    d = pd.DataFrame({"ds": hist[TIME].to_numpy(), "y": hist[TARGET].to_numpy(float)})',
+      '    model = Prophet(interval_width=1 - ALPHA, daily_seasonality=FREQ == "h", **p)',
       '    for c in KNOWN:  # known-ahead drivers become extra regressors', '        model.add_regressor(c)', '        d[c] = hist[c].ffill().fillna(0).to_numpy(float)',
       '    model.fit(d)', '    f = pd.DataFrame({"ds": fut[TIME].to_numpy()})', '    for c in KNOWN:', '        f[c] = fut[c].ffill().fillna(0).to_numpy(float)',
-      '    p = model.predict(f)', '    return p["yhat"].to_numpy(), p["yhat_lower"].to_numpy(), p["yhat_upper"].to_numpy()'] },
-    var: { imp: ['from statsmodels.tsa.api import VAR'], body: [
-      '    data = hist[[TARGET] + OTHERS].astype(float).interpolate().bfill()',
+      '    pr = model.predict(f)', '    return pr["yhat"].to_numpy(), pr["yhat_lower"].to_numpy(), pr["yhat_upper"].to_numpy()'] },
+    var: { imp: ['from statsmodels.tsa.api import VAR'], params: '{"maxlags": None}  # None = choose by AIC, up to one season', body: [
+      '    p = dict(PARAMS, **(params or {}))', '    data = hist[[TARGET] + OTHERS].astype(float).interpolate().bfill()',
       '    diff = data.diff().dropna()  # VAR wants stationary inputs, so it models the changes',
-      '    maxlags = max(1, min(SEASON, len(diff) // 10))', '    res = VAR(diff.to_numpy()).fit(maxlags=maxlags, ic="aic")',
+      '    maxlags = max(1, min(p["maxlags"] or SEASON, len(diff) // 10))', '    res = VAR(diff.to_numpy()).fit(maxlags=maxlags, ic=None if p["maxlags"] else "aic")',
       '    if res.k_ar == 0:', '        res = VAR(diff.to_numpy()).fit(1)',
       '    mean, lo, hi = res.forecast_interval(diff.to_numpy()[-res.k_ar:], steps=len(fut), alpha=ALPHA)',
       '    yhat = data[TARGET].iloc[-1] + np.cumsum(mean[:, 0])  # undo the differencing',
@@ -1630,50 +1909,72 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
   };
   function genStat(spec, m, d, title) {
     var F = FIT[m.slug] || FIT.naive, others = d.num.concat(d.bool);
-    var usesKnown = m.slug === 'arima' || m.slug === 'prophet';
+    var usesKnown = m.slug === 'arima' || m.slug === 'prophet', tuned = spec.tune && RI.tunable(spec, m);
     var L = [header(spec, m, d, title, ['', 'One model per series. Classical models are cheap to fit, so predict.py refits on the latest', 'history every time you forecast: no stale model file to manage.', '',
-      'Run:', '    pip install -r requirements.txt', '    python train.py                         # scores the last HORIZON periods of every series',
+      'Run:', '    pip install -r requirements.txt', '    python train.py                         # ' + (tuned ? 'tunes by backtest (-> params.json), then ' : '') + 'scores the last HORIZON periods of every series',
       '    python predict.py [history.csv] [future.csv]   # refit + forecast -> forecast.csv'])];
-    L.push('import warnings', '', 'import numpy as np', 'import pandas as pd');
+    L.push('import ' + (tuned ? 'json' : 'warnings'));
+    if (tuned) L.push('import warnings');
+    L.push('', 'import numpy as np');
+    if (tuned) L.push('import optuna');
+    L.push('import pandas as pd');
     if (F.imp.length) L.push(F.imp.join('\n'));
     L.push('', 'warnings.filterwarnings("ignore")', '');
     L = L.concat(fcConfig(spec, d, m, [
       'KNOWN = ' + (usesKnown ? pyList(d.known, 8) + '  # known-ahead drivers: exogenous regressors' : '[]  # ' + m.name + ' is univariate' + (d.known.length ? ': ' + d.known.join(', ') + ' not used' : '')),
       'PAST = []', 'BOOLEAN = ' + pyList(d.bool.filter(function (b) { return usesKnown && d.known.indexOf(b) >= 0 || m.slug === 'var'; }), 10),
       m.slug === 'var' ? 'OTHERS = ' + pyList(others, 9) + '  # modelled jointly with the target' : null,
-      'SERIES = GROUPS or ["_series"]', 'ALPHA = 0.1  # 90% intervals'].filter(Boolean)));
+      'SERIES = GROUPS or ["_series"]', 'ALPHA = 0.1  # 90% intervals', 'PARAMS = ' + F.params + (tuned ? '' : '')].filter(Boolean)));
+    if (tuned) L = L.concat(['SEED = 42'], tuneConfig(25, 1200, 3, 'Optuna search scored by a rolling-origin backtest (mean MASE)'));
     L.push('', boolParse(), '', '');
     L = L.concat(fcLoad(false).map(function (l) { return m.slug === 'var' ? l.replace('for c in KNOWN + PAST:', 'for c in KNOWN + PAST + OTHERS:') : l; }));
-    L.push('', '', 'def fit_forecast(hist, fut):', '    """Fit ' + m.name + ' on one series\' history and forecast the rows of `fut`. Returns (yhat, lo, hi)."""');
+    L.push('', '', 'def fit_forecast(hist, fut, params=None):', '    """Fit ' + m.name + ' on one series\' history and forecast the rows of `fut`. Returns (yhat, lo, hi)."""');
     L = L.concat(F.body);
-    L.push('', '', 'def main():', '    df = load(DATA)', '    table, skipped = [], 0', '    for key, s in df.groupby(SERIES, sort=False):',
+    if (tuned) {
+      L.push('', '');
+      L = L.concat(spaceFn(SPACE[m.slug]));
+      L.push('def backtest(params, df):', '    """Mean MASE over FOLDS rolling origins per series. The last HORIZON periods (the final holdout) are left out."""',
+        '    errors = []', '    for _, s in df.groupby(SERIES, sort=False):', '        s = s.dropna(subset=[TARGET]).iloc[:-HORIZON]', '        for k in range(FOLDS, 0, -1):',
+        '            end = len(s) - (k - 1) * HORIZON', '            hist, test = s.iloc[:end - HORIZON], s.iloc[end - HORIZON:end]',
+        '            if len(hist) <= max(2 * SEASON, 8):', '                continue', '            yhat, _, _ = fit_forecast(hist, test, params)',
+        '            y, h = test[TARGET].to_numpy(float), hist[TARGET].to_numpy(float)',
+        '            errors.append(scores(y, np.asarray(yhat, float), seasonal_naive(h, len(y)), h)["mase"])',
+        '    return float(np.nanmean(errors)) if errors else float("inf")', '', '',
+        'def tune(df):', '    """Optuna over the settings above; the best ones go to params.json for predict.py."""', '',
+        '    def objective(trial):', '        try:', '            return backtest(search_space(trial), df)', '        except Exception:  # e.g. an order that will not fit', '            return float("inf")', '');
+      L = L.concat(studyLines('minimize', 'backtest MASE').slice(0, -1), ['    with open("params.json", "w") as fh:', '        json.dump(best, fh)', '    return best']);
+    }
+    L.push('', '', 'def main():', '    df = load(DATA)');
+    if (tuned) L.push('    params = PARAMS', '    if TUNE:', '        print(f"Tuning ({FOLDS} backtest folds per series, up to {TUNE_TRIALS} trials):")', '        params = tune(df)');
+    L.push('    table, skipped = [], 0', '    for key, s in df.groupby(SERIES, sort=False):',
       '        s = s.dropna(subset=[TARGET]) if s[TARGET].notna().sum() > HORIZON else s', '        if len(s) <= HORIZON + max(2 * SEASON, 8):', '            skipped += 1', '            continue',
-      '        hist, test = s.iloc[:-HORIZON], s.iloc[-HORIZON:]', '        yhat, lo, hi = fit_forecast(hist, test)', '        y, h = test[TARGET].to_numpy(float), hist[TARGET].to_numpy(float)',
+      '        hist, test = s.iloc[:-HORIZON], s.iloc[-HORIZON:]', '        yhat, lo, hi = fit_forecast(hist, test' + (tuned ? ', params' : '') + ')', '        y, h = test[TARGET].to_numpy(float), hist[TARGET].to_numpy(float)',
       '        row = scores(y, np.asarray(yhat, float), seasonal_naive(h, len(y)), h)', '        row["coverage"] = np.mean((y >= lo) & (y <= hi))', '        table.append(row)',
       '    if skipped:', '        print(f"skipped {skipped} series that are too short to score")', '    if not table:', '        raise SystemExit("No series is long enough: lower HORIZON or add history.")',
       '    report(table).to_csv("evaluation.csv", index=False)', '    print("\\nPer-series scores in evaluation.csv. Next: python predict.py")', '', '',
       'if __name__ == "__main__":', '    main()', '');
     var P = ['"""Refit on the latest history and forecast the next HORIZON periods of every series.', '', '    python predict.py [history.csv] [future.csv]', '',
       usesKnown && d.known.length ? 'future.csv: optional rows for the forecast period with ' + [d.time].concat(d.groups, d.known).join(', ') + '.' : 'future.csv: optional; by default the next HORIZON timestamps are generated.', '"""',
-      'import sys', '', 'import numpy as np', 'import pandas as pd', '', 'from train import DATA, GROUPS, SERIES, TARGET, TIME, fit_forecast, load, make_future, rows_of', '', '',
-      'def main(history_path=DATA, future_path=None, out="forecast.csv"):', '    history = load(history_path)',
-      '    future = make_future(history, load(future_path) if future_path else None)', '    parts = []',
-      '    for key, s in history.groupby(SERIES, sort=False):', '        fut = rows_of(future, key).sort_values(TIME)', '        yhat, lo, hi = fit_forecast(s.dropna(subset=[TARGET]), fut)',
+      'import sys'].concat(tuned ? ['import json', 'import os'] : []).concat(['', 'import numpy as np', 'import pandas as pd', '', 'from train import DATA, GROUPS, PARAMS, SERIES, TARGET, TIME, fit_forecast, load, make_future, rows_of', '', '',
+      'def main(history_path=DATA, future_path=None, out="forecast.csv"):', '    history = load(history_path)']);
+    if (tuned) P.push('    params = PARAMS', '    if os.path.exists("params.json"):  # written by the tuning in train.py', '        with open("params.json") as fh:', '            params = json.load(fh)');
+    P.push('    future = make_future(history, load(future_path) if future_path else None)', '    parts = []',
+      '    for key, s in history.groupby(SERIES, sort=False):', '        fut = rows_of(future, key).sort_values(TIME)', '        yhat, lo, hi = fit_forecast(s.dropna(subset=[TARGET]), fut' + (tuned ? ', params' : '') + ')',
       '        parts.append(fut[SERIES + [TIME]].assign(forecast=yhat, lo=lo, hi=hi))', '    result = pd.concat(parts, ignore_index=True)',
       '    if not GROUPS:', '        result = result.drop(columns=["_series"])', '    result.to_csv(out, index=False)', '    print(f"Wrote {len(result):,} forecasts to {out}")', '', '',
-      'if __name__ == "__main__":', '    main(*sys.argv[1:3])', ''];
-    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m) };
+      'if __name__ == "__main__":', '    main(*sys.argv[1:3])', '');
+    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m, null, tuned) };
   }
 
-  /* ---------- template: PyTorch sequence models */
+  /* ---------- template: PyTorch sequence models. Net(n_in, n_fut, hidden) maps (past window, known future) -> HORIZON values
+     (or HORIZON x QUANTILES for the nets in QNETS). */
+  var HEAD = '        self.head = nn.Sequential(nn.Linear(hidden + n_fut * HORIZON, hidden), nn.ReLU(), nn.Linear(hidden, HORIZON))';
   var NETS = {
     lstm: ['class Net(nn.Module):', '    """LSTM encoder over the lookback window + an MLP head that also sees the known future."""',
-      '    def __init__(self, n_in, n_fut):', '        super().__init__()', '        self.rnn = nn.LSTM(n_in, HIDDEN, num_layers=2, batch_first=True, dropout=0.1)',
-      '        self.head = nn.Sequential(nn.Linear(HIDDEN + n_fut * HORIZON, HIDDEN), nn.ReLU(), nn.Linear(HIDDEN, HORIZON))', '',
+      '    def __init__(self, n_in, n_fut, hidden=HIDDEN):', '        super().__init__()', '        self.rnn = nn.LSTM(n_in, hidden, num_layers=2, batch_first=True, dropout=0.1)', HEAD, '',
       '    def forward(self, x, xf):', '        out, _ = self.rnn(x)', '        return self.head(torch.cat([out[:, -1], xf.flatten(1)], dim=1))'],
     gru: ['class Net(nn.Module):', '    """GRU encoder over the lookback window + an MLP head that also sees the known future."""',
-      '    def __init__(self, n_in, n_fut):', '        super().__init__()', '        self.rnn = nn.GRU(n_in, HIDDEN, num_layers=2, batch_first=True, dropout=0.1)',
-      '        self.head = nn.Sequential(nn.Linear(HIDDEN + n_fut * HORIZON, HIDDEN), nn.ReLU(), nn.Linear(HIDDEN, HORIZON))', '',
+      '    def __init__(self, n_in, n_fut, hidden=HIDDEN):', '        super().__init__()', '        self.rnn = nn.GRU(n_in, hidden, num_layers=2, batch_first=True, dropout=0.1)', HEAD, '',
       '    def forward(self, x, xf):', '        out, _ = self.rnn(x)', '        return self.head(torch.cat([out[:, -1], xf.flatten(1)], dim=1))'],
     tcn: ['class CausalBlock(nn.Module):', '    """Two dilated causal convolutions with a residual connection (pad on the left only: no peeking)."""',
       '    def __init__(self, c_in, c_out, k, dilation):', '        super().__init__()', '        self.pad = (k - 1) * dilation',
@@ -1682,37 +1983,86 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       '    def forward(self, x):', '        h = self.drop(torch.relu(self.conv1(nn.functional.pad(x, (self.pad, 0)))))',
       '        h = self.drop(torch.relu(self.conv2(nn.functional.pad(h, (self.pad, 0)))))', '        return torch.relu(h + self.skip(x))', '', '',
       'class Net(nn.Module):', '    """TCN: receptive field = 1 + 2 * (k - 1) * (2**LEVELS - 1) steps."""', '    LEVELS = 5', '',
-      '    def __init__(self, n_in, n_fut):', '        super().__init__()',
-      '        self.tcn = nn.Sequential(*[CausalBlock(n_in if i == 0 else HIDDEN, HIDDEN, 3, 2 ** i) for i in range(self.LEVELS)])',
-      '        self.head = nn.Sequential(nn.Linear(HIDDEN + n_fut * HORIZON, HIDDEN), nn.ReLU(), nn.Linear(HIDDEN, HORIZON))', '',
+      '    def __init__(self, n_in, n_fut, hidden=HIDDEN):', '        super().__init__()',
+      '        self.tcn = nn.Sequential(*[CausalBlock(n_in if i == 0 else hidden, hidden, 3, 2 ** i) for i in range(self.LEVELS)])', HEAD, '',
       '    def forward(self, x, xf):', '        h = self.tcn(x.transpose(1, 2))[:, :, -1]', '        return self.head(torch.cat([h, xf.flatten(1)], dim=1))'],
     transformer: ['class Net(nn.Module):', '    """Transformer encoder with learned positions; the last token summarises the window."""',
-      '    def __init__(self, n_in, n_fut):', '        super().__init__()', '        self.inp = nn.Linear(n_in, HIDDEN)', '        self.pos = nn.Parameter(torch.zeros(1, LOOKBACK, HIDDEN))',
-      '        layer = nn.TransformerEncoderLayer(HIDDEN, nhead=4, dim_feedforward=2 * HIDDEN, dropout=0.1, batch_first=True)',
-      '        self.enc = nn.TransformerEncoder(layer, num_layers=2)',
-      '        self.head = nn.Sequential(nn.Linear(HIDDEN + n_fut * HORIZON, HIDDEN), nn.ReLU(), nn.Linear(HIDDEN, HORIZON))', '',
-      '    def forward(self, x, xf):', '        h = self.enc(self.inp(x) + self.pos[:, -x.shape[1]:])[:, -1]', '        return self.head(torch.cat([h, xf.flatten(1)], dim=1))']
+      '    def __init__(self, n_in, n_fut, hidden=HIDDEN):', '        super().__init__()', '        self.inp = nn.Linear(n_in, hidden)', '        self.pos = nn.Parameter(torch.zeros(1, LOOKBACK, hidden))',
+      '        layer = nn.TransformerEncoderLayer(hidden, nhead=4, dim_feedforward=2 * hidden, dropout=0.1, batch_first=True)',
+      '        self.enc = nn.TransformerEncoder(layer, num_layers=2)', HEAD, '',
+      '    def forward(self, x, xf):', '        h = self.enc(self.inp(x) + self.pos[:, -x.shape[1]:])[:, -1]', '        return self.head(torch.cat([h, xf.flatten(1)], dim=1))'],
+    nbeats: ['class Block(nn.Module):', '    """One N-BEATS block: four fully connected layers, then a backcast (what it explains) and a partial forecast."""',
+      '    def __init__(self, n_ctx, width):', '        super().__init__()',
+      '        layers = []', '        for i in range(4):', '            layers += [nn.Linear(LOOKBACK + n_ctx if i == 0 else width, width), nn.ReLU()]',
+      '        self.fc = nn.Sequential(*layers)', '        self.back = nn.Linear(width, LOOKBACK)', '        self.fore = nn.Linear(width, HORIZON)', '',
+      '    def forward(self, x, ctx):', '        h = self.fc(torch.cat([x, ctx], dim=1))', '        return self.back(h), self.fore(h)', '', '',
+      'class Net(nn.Module):', '    """N-BEATS with generic blocks, doubly residual. The target window is the residual stream; past drivers,',
+      '    calendar and the known future enter every block as extra context (the NBEATSx idea)."""', '    BLOCKS = 6', '',
+      '    def __init__(self, n_in, n_fut, hidden=HIDDEN):', '        super().__init__()', '        n_ctx = (n_in - 1) * LOOKBACK + n_fut * HORIZON',
+      '        self.blocks = nn.ModuleList([Block(n_ctx, 4 * hidden) for _ in range(self.BLOCKS)])', '',
+      '    def forward(self, x, xf):', '        resid = x[:, :, 0]  # the scaled target window', '        ctx = torch.cat([x[:, :, 1:].flatten(1), xf.flatten(1)], dim=1)',
+      '        out = 0', '        for block in self.blocks:', '            back, fore = block(resid, ctx)', '            resid = resid - back  # the next block sees what is still unexplained',
+      '            out = out + fore', '        return out'],
+    tft: ['class GRN(nn.Module):', '    """Gated residual network: LayerNorm(skip(a) + GLU(W1 ELU(W2 a)))."""',
+      '    def __init__(self, d_in, d, d_out=None):', '        super().__init__()', '        d_out = d_out or d',
+      '        self.skip = nn.Linear(d_in, d_out) if d_in != d_out else nn.Identity()', '        self.fc1, self.fc2 = nn.Linear(d_in, d), nn.Linear(d, 2 * d_out)',
+      '        self.drop, self.norm = nn.Dropout(0.1), nn.LayerNorm(d_out)', '',
+      '    def forward(self, a):', '        h = self.fc2(self.drop(nn.functional.elu(self.fc1(a))))', '        return self.norm(self.skip(a) + nn.functional.glu(h, dim=-1))', '', '',
+      'class VariableSelection(nn.Module):', '    """Embeds every input variable, weighs them with a softmax computed from all of them (the weights are',
+      '    variable importances), and returns the weighted sum."""',
+      '    def __init__(self, n_vars, d):', '        super().__init__()', '        self.embed = nn.ModuleList([nn.Linear(1, d) for _ in range(n_vars)])',
+      '        self.weights = GRN(n_vars * d, d, n_vars)', '        self.vars = nn.ModuleList([GRN(d, d) for _ in range(n_vars)])', '',
+      '    def forward(self, x):', '        e = [emb(x[..., i:i + 1]) for i, emb in enumerate(self.embed)]',
+      '        w = torch.softmax(self.weights(torch.cat(e, dim=-1)), dim=-1)', '        v = torch.stack([g(ei) for g, ei in zip(self.vars, e)], dim=-1)',
+      '        return (v * w.unsqueeze(-2)).sum(-1), w', '', '',
+      'class InterpretableAttention(nn.Module):', '    """Multi-head attention whose heads share one value projection, so the averaged weights stay readable."""',
+      '    def __init__(self, d, heads=4):', '        super().__init__()', '        dk = max(d // heads, 1)',
+      '        self.q = nn.ModuleList([nn.Linear(d, dk) for _ in range(heads)])', '        self.k = nn.ModuleList([nn.Linear(d, dk) for _ in range(heads)])',
+      '        self.v, self.out, self.scale = nn.Linear(d, d), nn.Linear(d, d), dk ** -0.5', '',
+      '    def forward(self, x, mask):', '        att = torch.stack([torch.softmax(q(x) @ k(x).transpose(1, 2) * self.scale + mask, dim=-1)',
+      '                           for q, k in zip(self.q, self.k)]).mean(0)', '        return self.out(att @ self.v(x)), att', '', '',
+      'class Net(nn.Module):', '    """A compact Temporal Fusion Transformer (Lim et al., 2021): variable selection, an LSTM encoder-decoder,',
+      '    interpretable attention and quantile outputs. (Static covariates are left out in this listing.)"""', '',
+      '    def __init__(self, n_in, n_fut, hidden=HIDDEN):', '        super().__init__()',
+      '        self.sel_past, self.sel_fut = VariableSelection(n_in, hidden), VariableSelection(max(n_fut, 1), hidden)',
+      '        self.enc = nn.LSTM(hidden, hidden, batch_first=True)', '        self.dec = nn.LSTM(hidden, hidden, batch_first=True)',
+      '        self.gate1, self.norm1 = nn.Linear(hidden, 2 * hidden), nn.LayerNorm(hidden)', '        self.enrich = GRN(hidden, hidden)',
+      '        self.attn = InterpretableAttention(hidden)', '        self.gate2, self.norm2 = nn.Linear(hidden, 2 * hidden), nn.LayerNorm(hidden)',
+      '        self.ff = GRN(hidden, hidden)', '        self.gate3, self.norm3 = nn.Linear(hidden, 2 * hidden), nn.LayerNorm(hidden)',
+      '        self.head = nn.Linear(hidden, len(QUANTILES))', '',
+      '    def forward(self, x, xf):', '        if xf.shape[-1] == 0:  # nothing known ahead: the decoder reads a constant',
+      '            xf = torch.zeros(*xf.shape[:2], 1, device=x.device)', '        past, _ = self.sel_past(x)', '        fut, _ = self.sel_fut(xf)',
+      '        h_enc, state = self.enc(past)', '        h_dec, _ = self.dec(fut, state)', '        glu = nn.functional.glu',
+      '        h = self.norm1(torch.cat([past, fut], dim=1) + glu(self.gate1(torch.cat([h_enc, h_dec], dim=1)), dim=-1))',
+      '        e = self.enrich(h)', '        n = e.shape[1]', '        mask = torch.triu(torch.full((n, n), float("-inf"), device=x.device), 1)  # causal: no looking ahead',
+      '        a, _ = self.attn(e, mask)', '        h2 = self.norm2(e + glu(self.gate2(a), dim=-1))',
+      '        out = self.norm3(h + glu(self.gate3(self.ff(h2)), dim=-1))', '        return self.head(out[:, -xf.shape[1]:])  # (batch, HORIZON, quantiles)']
   };
+  var QNETS = { tft: true };
   function genTorch(spec, m, d, title) {
-    var f = RI.FREQ[spec.freq];
+    var f = RI.FREQ[spec.freq], quant = !!QNETS[m.slug], tuned = spec.tune && RI.tunable(spec, m);
     var cal = { H: ['np.sin(2 * np.pi * t.dt.hour / 24)', 'np.cos(2 * np.pi * t.dt.hour / 24)', 'np.sin(2 * np.pi * t.dt.dayofweek / 7)', 'np.cos(2 * np.pi * t.dt.dayofweek / 7)'],
       D: ['np.sin(2 * np.pi * t.dt.dayofweek / 7)', 'np.cos(2 * np.pi * t.dt.dayofweek / 7)', 'np.sin(2 * np.pi * t.dt.dayofyear / 365.25)', 'np.cos(2 * np.pi * t.dt.dayofyear / 365.25)'],
       W: ['np.sin(2 * np.pi * t.dt.isocalendar().week.astype(int) / 52.18)', 'np.cos(2 * np.pi * t.dt.isocalendar().week.astype(int) / 52.18)'],
       M: ['np.sin(2 * np.pi * t.dt.month / 12)', 'np.cos(2 * np.pi * t.dt.month / 12)'], Q: ['np.sin(2 * np.pi * t.dt.quarter / 4)', 'np.cos(2 * np.pi * t.dt.quarter / 4)'], Y: [] }[spec.freq];
     var L = [header(spec, m, d, title, ['', 'A global sequence model: it reads the last LOOKBACK steps of every series (target, drivers, calendar)',
-      'and outputs all HORIZON future values at once, also seeing the known-ahead drivers for those steps.', '',
-      'Run:', '    pip install -r requirements.txt', '    python train.py                         # trains, scores the last HORIZON periods, saves model.pt + model.joblib',
+      'and outputs all HORIZON future values at once' + (quant ? ' (three quantiles each)' : '') + ', also seeing the known-ahead drivers for those steps.', '',
+      'Run:', '    pip install -r requirements.txt', '    python train.py                         # ' + (tuned ? 'tunes, ' : '') + 'trains, scores the last HORIZON periods, saves model.pt + model.joblib',
       '    python predict.py [history.csv] [future.csv]   # next HORIZON periods -> forecast.csv', '', 'A GPU helps a lot; on CPU, lower EPOCHS or HIDDEN first.'])];
-    L.push('import copy', 'import warnings', '', 'import joblib', 'import numpy as np', 'import pandas as pd', 'import torch', 'from numpy.lib.stride_tricks import sliding_window_view', 'from torch import nn', '',
-      'warnings.filterwarnings("ignore")', '');
+    L.push('import copy', 'import warnings', '', 'import joblib', 'import numpy as np');
+    if (tuned) L.push('import optuna');
+    L.push('import pandas as pd', 'import torch', 'from numpy.lib.stride_tricks import sliding_window_view', 'from torch import nn', '', 'warnings.filterwarnings("ignore")', '');
     L = L.concat(fcConfig(spec, d, m, [
       'KNOWN = ' + pyList(d.known, 8) + '  # known in advance: fed for the past AND the forecast steps',
       'PAST = ' + pyList(d.past, 7) + '  # only known afterwards: fed for the past steps only',
       'BOOLEAN = ' + pyList(d.bool, 10), 'SERIES = GROUPS or ["_series"]',
       'LOOKBACK = ' + f.look + '  # steps the network reads (' + Math.round(f.look / Math.max(f.season, 1)) + ' seasons)',
-      'HIDDEN = 64', 'EPOCHS = 40', 'BATCH = 256', 'LR = 1e-3', 'PATIENCE = 6  # early stopping', 'ALPHA = 0.1  # 90% conformal intervals',
+      'HIDDEN = 64', 'EPOCHS = 40', 'BATCH = 256', 'LR = 1e-3', 'PATIENCE = 6  # early stopping',
+      quant ? 'QUANTILES = [0.1, 0.5, 0.9]  # the network outputs these quantiles of every future step (an 80% band)' : 'ALPHA = 0.1  # 90% conformal intervals',
       'REFIT = True  # retrain on all data after scoring (doubles the time; set False to keep the scored model)',
       'SEED = 42', 'DEVICE = "cuda" if torch.cuda.is_available() else "cpu"']));
+    if (quant) L.push('ALPHA = 0.2  # for the coverage report: the P10-P90 band should hold about 80%');
+    if (tuned) L = L.concat(tuneConfig(12, 3600, 0, 'Optuna over the network size and learning rate first'), ['TUNE_EPOCHS = 12  # shorter training per trial']);
     if (d.cat.length || d.txt.length) L.push('# not used by the network: ' + d.cat.concat(d.txt).join(', ') + ' (add embeddings if they matter)');
     L.push('', boolParse(), '', '');
     L = L.concat(fcLoad(false));
@@ -1737,36 +2087,49 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       '    if not X:', '        raise SystemExit(f"Series are too short: need at least LOOKBACK + HORIZON = {LOOKBACK + HORIZON} rows.")',
       '    X, F, Y, E = (np.concatenate(a) for a in (X, F, Y, E))', '    ok = ~np.isnan(Y).any(1)', '    return X[ok], F[ok], Y[ok], E[ok]', '', '');
     L = L.concat(NETS[m.slug]);
-    L.push('', '', 'def batches(n, size, shuffle):', '    idx = np.random.permutation(n) if shuffle else np.arange(n)', '    for b in range(0, n, size):', '        yield torch.from_numpy(idx[b:b + size])', '', '',
-      'def train_net(X, F, Y, E):', '    """AdamW + Huber loss; the latest 10% of windows (by time) is the early-stopping set."""',
+    L.push('', '');
+    if (quant) L.push('def pinball(pred, y):', '    """Quantile (pinball) loss averaged over QUANTILES. pred: (batch, h, q), y: (batch, h)."""',
+      '    q = torch.tensor(QUANTILES, device=pred.device)', '    e = y.unsqueeze(-1) - pred', '    return torch.maximum(q * e, (q - 1) * e).mean()', '', '');
+    L.push('def batches(n, size, shuffle):', '    idx = np.random.permutation(n) if shuffle else np.arange(n)', '    for b in range(0, n, size):', '        yield torch.from_numpy(idx[b:b + size])', '', '',
+      'def train_net(X, F, Y, E, hidden=HIDDEN, lr=LR, epochs=EPOCHS, verbose=True):', '    """AdamW + ' + (quant ? 'pinball' : 'Huber') + ' loss; the latest 10% of windows (by time) is the early-stopping set."""',
       '    torch.manual_seed(SEED)', '    np.random.seed(SEED)', '    order = np.argsort(E, kind="stable")', '    cut = int(len(order) * 0.9)', '    tr, va = order[:cut], order[cut:]',
       '    if len(va) == 0:', '        va = tr[-1:]',
       '    X, F, Y = (torch.from_numpy(np.ascontiguousarray(a)) for a in (X, F, Y))',
-      '    net = Net(X.shape[2], F.shape[2]).to(DEVICE)', '    opt = torch.optim.AdamW(net.parameters(), lr=LR, weight_decay=1e-4)', '    loss_fn = nn.HuberLoss()',
-      '    best, best_state, bad = float("inf"), None, 0', '    for epoch in range(EPOCHS):', '        net.train()',
+      '    net = Net(X.shape[2], F.shape[2], hidden).to(DEVICE)', '    opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=1e-4)', '    loss_fn = ' + (quant ? 'pinball' : 'nn.HuberLoss()'),
+      '    best, best_state, bad = float("inf"), None, 0', '    for epoch in range(epochs):', '        net.train()',
       '        for j in batches(len(tr), BATCH, True):', '            j = torch.from_numpy(tr)[j]', '            opt.zero_grad()',
       '            loss = loss_fn(net(X[j].to(DEVICE), F[j].to(DEVICE)), Y[j].to(DEVICE))', '            loss.backward()',
       '            nn.utils.clip_grad_norm_(net.parameters(), 1.0)', '            opt.step()', '        net.eval()', '        with torch.no_grad():',
       '            v = np.mean([loss_fn(net(X[torch.from_numpy(va)[j]].to(DEVICE), F[torch.from_numpy(va)[j]].to(DEVICE)),',
       '                                 Y[torch.from_numpy(va)[j]].to(DEVICE)).item() for j in batches(len(va), 1024, False)])',
-      '        print(f"  epoch {epoch + 1:3d}   validation loss {v:.5f}")', '        if v < best - 1e-5:', '            best, best_state, bad = v, copy.deepcopy(net.state_dict()), 0',
-      '        else:', '            bad += 1', '            if bad >= PATIENCE:', '                break', '    net.load_state_dict(best_state)', '    return net.eval()', '', '',
-      'def forecast_series(net, hist, fut, sc, stats):', '    """Last LOOKBACK rows of history + the HORIZON future rows -> forecast in original units."""',
+      '        if verbose:', '            print(f"  epoch {epoch + 1:3d}   validation loss {v:.5f}")', '        if v < best - 1e-5:', '            best, best_state, bad = v, copy.deepcopy(net.state_dict()), 0',
+      '        else:', '            bad += 1', '            if bad >= PATIENCE:', '                break', '    net.load_state_dict(best_state)', '    net.best_val = best', '    return net.eval()', '', '');
+    if (tuned) {
+      L = L.concat(spaceFn(SPACE.torch));
+      L.push('def tune(train):', '    """Optuna on the training windows only: each trial trains TUNE_EPOCHS epochs and is scored on the latest',
+        '    10% of windows (by time). The final holdout stays unseen."""', '    sc, stats = fit_scaler(train), series_stats(train)', '    X, F, Y, E = build(train, sc, stats)', '',
+        '    def objective(trial):', '        return train_net(X, F, Y, E, epochs=TUNE_EPOCHS, verbose=False, **search_space(trial)).best_val', '');
+      L = L.concat(studyLines('minimize', 'validation loss'), ['', '']);
+    }
+    L.push('def forecast_series(net, hist, fut, sc, stats):', '    """Last LOOKBACK rows of history + the HORIZON future rows -> forecast in original units' + (quant ? ' (one column per quantile)' : '') + '."""',
       '    xp, _, _ = arrays(hist.tail(LOOKBACK), sc, stats)', '    _, xf, _ = arrays(fut.head(HORIZON), sc, stats)',
       '    if len(xp) < LOOKBACK:', '        xp = np.vstack([np.zeros((LOOKBACK - len(xp), xp.shape[1]), np.float32), xp])',
       '    with torch.no_grad():', '        p = net(torch.from_numpy(xp[None]).to(DEVICE), torch.from_numpy(xf[None]).to(DEVICE))[0].cpu().numpy()',
       '    mu, sd = stats', '    return p[:len(fut)] * sd + mu', '', '',
-      'def main():', '    df = load(DATA)', '    times = np.sort(df[TIME].unique())', '    cutoff = times[-HORIZON]', '    train = df[df[TIME] < cutoff]',
-      '    sc, stats = fit_scaler(train), series_stats(train)', '    X, F, Y, E = build(train, sc, stats)',
+      'def main():', '    df = load(DATA)', '    times = np.sort(df[TIME].unique())', '    cutoff = times[-HORIZON]', '    train = df[df[TIME] < cutoff]');
+    if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"Tuning (up to {TUNE_TRIALS} trials of {TUNE_EPOCHS} epochs):")', '        params = tune(train)');
+    L.push('    sc, stats = fit_scaler(train), series_stats(train)', '    X, F, Y, E = build(train, sc, stats)',
       '    print(f"{len(X):,} training windows of {LOOKBACK} steps from {df.groupby(SERIES).ngroups} series, on {DEVICE}")',
-      '    n_in, n_fut = X.shape[2], F.shape[2]', '    net = train_net(X, F, Y, E)', '    table, errors = [], []', '    for key, s in df.groupby(SERIES, sort=False):',
+      '    n_in, n_fut = X.shape[2], F.shape[2]', '    net = train_net(X, F, Y, E' + (tuned ? ', **params' : '') + ')', '    table, errors = [], []', '    for key, s in df.groupby(SERIES, sort=False):',
       '        hist, test = s[s[TIME] < cutoff], s[s[TIME] >= cutoff]', '        if len(test) != HORIZON or len(hist) < SEASON + 1:', '            continue',
-      '        f = forecast_series(net, hist, test, sc, stats[key_of(key)])', '        y, h = test[TARGET].to_numpy(float), hist[TARGET].to_numpy(float)',
-      '        table.append(scores(y, f, seasonal_naive(h, len(y)), h))', '        errors.extend(np.abs(y - f)[~np.isnan(y)])', '    report(table)',
+      '        f = forecast_series(net, hist, test, sc, stats[key_of(key)])', '        y, h = test[TARGET].to_numpy(float), hist[TARGET].to_numpy(float)');
+    if (quant) L.push('        f, lo, hi = f[:, 1], f[:, 0], f[:, 2]', '        row = scores(y, f, seasonal_naive(h, len(y)), h)', '        row["coverage"] = np.mean((y >= lo) & (y <= hi))', '        table.append(row)', '    report(table)', '    q = None  # intervals come from the quantile outputs');
+    else L.push('        table.append(scores(y, f, seasonal_naive(h, len(y)), h))', '        errors.extend(np.abs(y - f)[~np.isnan(y)])', '    report(table)',
       '    q = float(np.quantile(errors, min(1.0, (1 - ALPHA) * (len(errors) + 1) / len(errors))))',
-      '    print(f"  {1 - ALPHA:.0%} conformal interval: forecast +/- {q:,.4f}")',
-      '    if REFIT:', '        print("\\nRefitting on all data ...")', '        sc, stats = fit_scaler(df), series_stats(df)', '        net = train_net(*build(df, sc, stats))',
-      '    torch.save(net.state_dict(), "model.pt")', '    joblib.dump({"scaler": sc, "stats": stats, "n_in": n_in, "n_fut": n_fut, "q": q}, "model.joblib")',
+      '    print(f"  {1 - ALPHA:.0%} conformal interval: forecast +/- {q:,.4f}")');
+    L.push('    if REFIT:', '        print("\\nRefitting on all data ...")', '        sc, stats = fit_scaler(df), series_stats(df)', '        net = train_net(*build(df, sc, stats)' + (tuned ? ', **params' : '') + ')',
+      '    torch.save(net.state_dict(), "model.pt")',
+      '    joblib.dump({"scaler": sc, "stats": stats, "n_in": n_in, "n_fut": n_fut, "q": q, "hidden": ' + (tuned ? 'params.get("hidden", HIDDEN)' : 'HIDDEN') + '}, "model.joblib")',
       '    print("\\nSaved model.pt + model.joblib. Next: python predict.py")', '', '', 'if __name__ == "__main__":', '    main()', '');
     var train = L.join('\n');
     var P = ['"""Forecast the next HORIZON periods of every series with the trained network.', '', '    python predict.py [history.csv] [future.csv]', '',
@@ -1774,15 +2137,300 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       d.known.length ? 'future.csv   optional rows for the forecast period with ' + [d.time].concat(d.groups, d.known).join(', ') + '.' : 'future.csv   optional; by default the next HORIZON timestamps are generated.', '"""',
       'import sys', '', 'import joblib', 'import numpy as np', 'import pandas as pd', 'import torch', '',
       'from train import DATA, DEVICE, GROUPS, SERIES, TARGET, TIME, Net, forecast_series, key_of, load, make_future, rows_of', '', '',
-      'def main(history_path=DATA, future_path=None, out="forecast.csv"):', '    meta = joblib.load("model.joblib")', '    net = Net(meta["n_in"], meta["n_fut"]).to(DEVICE)',
+      'def main(history_path=DATA, future_path=None, out="forecast.csv"):', '    meta = joblib.load("model.joblib")', '    net = Net(meta["n_in"], meta["n_fut"], meta["hidden"]).to(DEVICE)',
       '    net.load_state_dict(torch.load("model.pt", map_location=DEVICE))', '    net.eval()', '    history = load(history_path)',
       '    future = make_future(history, load(future_path) if future_path else None)', '    parts = []',
       '    for key, s in history.groupby(SERIES, sort=False):', '        fut = rows_of(future, key).sort_values(TIME)',
       '        stats = meta["stats"].get(key_of(key)) or (float(s[TARGET].mean()), float(s[TARGET].std() or 1.0))  # a new series',
-      '        f = forecast_series(net, s, fut, meta["scaler"], stats)', '        parts.append(fut[SERIES + [TIME]].head(len(f)).assign(forecast=f, lo=f - meta["q"], hi=f + meta["q"]))',
-      '    result = pd.concat(parts, ignore_index=True)', '    if not GROUPS:', '        result = result.drop(columns=["_series"])', '    result.to_csv(out, index=False)',
-      '    print(f"Wrote {len(result):,} forecasts to {out}")', '', '', 'if __name__ == "__main__":', '    main(*sys.argv[1:3])', ''];
-    return { train: train, predict: P.join('\n'), requirements: req(m, ['joblib>=1.3']) };
+      '        f = forecast_series(net, s, fut, meta["scaler"], stats)'];
+    if (quant) P.push('        parts.append(fut[SERIES + [TIME]].head(len(f)).assign(forecast=f[:, 1], lo=f[:, 0], hi=f[:, 2]))');
+    else P.push('        parts.append(fut[SERIES + [TIME]].head(len(f)).assign(forecast=f, lo=f - meta["q"], hi=f + meta["q"]))');
+    P.push('    result = pd.concat(parts, ignore_index=True)', '    if not GROUPS:', '        result = result.drop(columns=["_series"])', '    result.to_csv(out, index=False)',
+      '    print(f"Wrote {len(result):,} forecasts to {out}")', '', '', 'if __name__ == "__main__":', '    main(*sys.argv[1:3])', '');
+    return { train: train, predict: P.join('\n'), requirements: req(m, ['joblib>=1.3'], tuned) };
+  }
+
+  /* ---------- template: pretrained foundation models (zero-shot: nothing to train) */
+  var FM = {
+    chronos: { imp: ['from chronos import BaseChronosPipeline'], cfg: ['MODEL_ID = "amazon/chronos-2"  # or "amazon/chronos-bolt-small": smaller and faster, but univariate'],
+      covariates: true, load: ['        _model = BaseChronosPipeline.from_pretrained(MODEL_ID, device_map=DEVICE)'],
+      body: ['    ids = lambda f: f[SERIES].astype(str).agg("|".join, axis=1)',
+        '    cols = [TIME, TARGET] + [c for c in KNOWN + PAST if c in history]',
+        '    context = history.dropna(subset=[TARGET])[cols].assign(_id=ids(history.dropna(subset=[TARGET])))',
+        '    fut = future.assign(_id=ids(future))', '    for c in KNOWN:', '        context[c] = context[c].ffill().fillna(0)', '        fut[c] = fut[c].ffill().fillna(0)',
+        '    h = int(fut.groupby("_id").size().max())',
+        '    # Chronos-2 treats extra columns in `context` as past-only covariates, and columns also in `future_df` as known ahead.',
+        '    out = get_model().predict_df(context, future_df=fut[["_id", TIME] + KNOWN] if KNOWN else None, id_column="_id",',
+        '                                 timestamp_column=TIME, target=TARGET, prediction_length=h, quantile_levels=QUANTILES)',
+        '    out = out.rename(columns={"predictions": "forecast", str(QUANTILES[0]): "lo", str(QUANTILES[-1]): "hi"})',
+        '    res = fut.merge(out[["_id", TIME, "forecast", "lo", "hi"]], on=["_id", TIME], how="left")', '    return res[SERIES + [TIME, "forecast", "lo", "hi"]]'] },
+    timesfm: { imp: ['import timesfm'], cfg: ['MODEL_ID = "google/timesfm-2.5-200m-pytorch"  # Apache-2.0 weights. TimesFM 3.0 exists, but its weights are non-commercial only.',
+      'CONTEXT = 1024  # past steps it reads per series (2.5 handles up to 16k)'], covariates: false,
+      load: ['        _model = timesfm.TimesFM_2p5_200M_torch.from_pretrained(MODEL_ID)',
+        '        _model.compile(timesfm.ForecastConfig(max_context=CONTEXT, max_horizon=max(256, HORIZON), normalize_inputs=True,',
+        '                                              use_continuous_quantile_head=True, force_flip_invariance=True,',
+        '                                              infer_is_positive=True, fix_quantile_crossing=True))'],
+      body: ['    keys, inputs = [], []', '    for key, s in history.dropna(subset=[TARGET]).groupby(SERIES, sort=False):',
+        '        keys.append(key_of(key))', '        inputs.append(s[TARGET].to_numpy(float)[-CONTEXT:])',
+        '    point, quant = get_model().forecast(horizon=HORIZON, inputs=inputs)',
+        '    parts = []', '    for i, key in enumerate(keys):', '        fut = rows_of(future, key).sort_values(TIME).head(HORIZON)', '        n = len(fut)',
+        '        # quant[..., 0] is the mean, then the deciles 0.1 ... 0.9: index 1 = P10, index 9 = P90',
+        '        parts.append(fut[SERIES + [TIME]].assign(forecast=point[i][:n], lo=quant[i][:n, 1], hi=quant[i][:n, 9]))',
+        '    return pd.concat(parts, ignore_index=True)'] }
+  };
+  function genFM(spec, m, d, title) {
+    var F = FM[m.slug];
+    var L = [header(spec, m, d, title, ['', 'Zero-shot: a pretrained model reads each series\' history and forecasts it. Nothing is fitted to your data,',
+      'so train.py only measures how good the forecasts are on the last HORIZON periods. The weights download',
+      'from Hugging Face the first time (hundreds of MB).', '',
+      'Run:', '    pip install -r requirements.txt', '    python train.py                         # scores the last HORIZON periods of every series',
+      '    python predict.py [history.csv] [future.csv]   # forecast -> forecast.csv'])];
+    L.push('import warnings', '', 'import numpy as np', 'import pandas as pd', 'import torch', F.imp.join('\n'), '', 'warnings.filterwarnings("ignore")', '');
+    L = L.concat(fcConfig(spec, d, m, [
+      'KNOWN = ' + (F.covariates ? pyList(d.known, 8) + '  # known-ahead covariates' : '[]  # univariate here' + (d.known.length ? ': ' + d.known.join(', ') + ' not used' : '')),
+      'PAST = ' + (F.covariates ? pyList(d.past, 7) + '  # past-only covariates' : '[]'),
+      'BOOLEAN = ' + pyList(F.covariates ? d.bool : [], 10), 'SERIES = GROUPS or ["_series"]',
+      'QUANTILES = [0.1, 0.5, 0.9]', 'ALPHA = 0.2  # the P10-P90 band should hold about 80% of actuals'].concat(F.cfg,
+      ['DEVICE = "cuda" if torch.cuda.is_available() else "cpu"'])));
+    if (spec.tune) L.push('# Cross-validated tuning: nothing to tune, the model is used zero-shot.');
+    L.push('', boolParse(), '', '');
+    L = L.concat(fcLoad(false));
+    L.push('', '', '_model = None', '', '', 'def get_model():', '    """Load the pretrained model once."""', '    global _model', '    if _model is None:');
+    L = L.concat(F.load);
+    L.push('    return _model', '', '', 'def forecast(history, future):', '    """Zero-shot forecast of the rows in `future` from `history`. Returns SERIES + TIME + forecast, lo, hi."""');
+    L = L.concat(F.body);
+    L.push('', '', 'def main():', '    df = load(DATA).dropna(subset=[TARGET])', '    times = np.sort(df[TIME].unique())', '    cutoff = times[-HORIZON]',
+      '    train, test = df[df[TIME] < cutoff], df[df[TIME] >= cutoff]',
+      '    print(f"{len(df):,} rows, {df.groupby(SERIES).ngroups} series; zero-shot with {MODEL_ID} on {DEVICE}")',
+      '    fc = forecast(train, test.drop(columns=[TARGET]))', '    res = test.merge(fc, on=SERIES + [TIME])', '    table = []',
+      '    for key, s in res.groupby(SERIES, sort=False):', '        hist = rows_of(train, key)[TARGET].to_numpy(float)', '        y, f = s[TARGET].to_numpy(float), s["forecast"].to_numpy(float)',
+      '        row = scores(y, f, seasonal_naive(hist, len(y)), hist)', '        row["coverage"] = np.mean((y >= s["lo"]) & (y <= s["hi"]))', '        table.append(row)',
+      '    report(table).to_csv("evaluation.csv", index=False)', '    print("\\nNothing to train. Next: python predict.py")', '', '', 'if __name__ == "__main__":', '    main()', '');
+    var P = ['"""Forecast the next HORIZON periods of every series, zero-shot.', '', '    python predict.py [history.csv] [future.csv]', '',
+      F.covariates && d.known.length ? 'future.csv: optional rows for the forecast period with ' + [d.time].concat(d.groups, d.known).join(', ') + '.' : 'future.csv: optional; by default the next HORIZON timestamps are generated.', '"""',
+      'import sys', '', 'from train import DATA, GROUPS, SERIES, TARGET, forecast, load, make_future', '', '',
+      'def main(history_path=DATA, future_path=None, out="forecast.csv"):', '    history = load(history_path).dropna(subset=[TARGET])',
+      '    future = make_future(history, load(future_path) if future_path else None)', '    result = forecast(history, future)',
+      '    if not GROUPS:', '        result = result.drop(columns=["_series"])', '    result.to_csv(out, index=False)', '    print(f"Wrote {len(result):,} forecasts to {out}")', '', '',
+      'if __name__ == "__main__":', '    main(*sys.argv[1:3])', ''];
+    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m, ['torch>=2.1']) };
+  }
+
+  /* ---------- shared by the anomaly and clustering templates: columns, loading, calendar parts */
+  function unsupColumns(spec, d, L, watched) {
+    var dates = uniq(d.dates.concat(d.time ? [d.time] : [])), eng = [];
+    dates.forEach(function (c) { eng.push(c + '_month_sin', c + '_month_cos', c + '_dow', c + '_hour'); });
+    L.push('DATA = ' + py(spec.file));
+    L.push('NUMERIC = ' + pyList(d.num.concat(watched ? [d.target] : []), 10) + (watched ? '  # includes ' + d.target + ', the metric you watch' : ''));
+    L.push('BOOLEAN = ' + pyList(d.bool, 10), 'CATEGORICAL = ' + pyList(d.cat, 14), 'DATES = ' + pyList(dates, 8));
+    L.push('KEY_DRIVERS = ' + pyList(d.key, 14) + '  # ★ the columns you highlighted');
+    if (d.txt.length) L.push('# text columns are left out: ' + d.txt.join(', '));
+    if (d.ids.length) L.push('# id columns are never features: ' + d.ids.join(', '));
+    L.push('ENGINEERED = ' + pyList(eng, 13) + '  # calendar parts, made in add_features()');
+    L.push('NUM_FEATURES = NUMERIC + BOOLEAN + ENGINEERED', 'CAT_FEATURES = CATEGORICAL', 'FEATURES = NUM_FEATURES + CAT_FEATURES', 'SEED = 42');
+    return dates.length;
+  }
+  function unsupLoad(hasDates) {
+    var L = ['def load(path):', '    df = pd.read_csv(path)', '    for c in DATES:', '        df[c] = pd.to_datetime(df[c], errors="coerce")', '    return df', '', '',
+      'def add_features(df):', '    """Types and calendar parts. Runs on training data and on new rows alike."""', '    df = df.copy()',
+      '    for c in NUMERIC:', '        df[c] = pd.to_numeric(df[c], errors="coerce")', '    for c in BOOLEAN:', '        df[c] = df[c].astype(str).str.strip().str.lower().map(TRUTHY)',
+      '    for c in CATEGORICAL:', '        df[c] = df[c].fillna("NA").astype(str)'];
+    if (hasDates) L.push('    for c in DATES:  # months on a circle, so December sits next to January', '        d = df[c]',
+      '        df[c + "_month_sin"] = np.sin(2 * np.pi * d.dt.month / 12)', '        df[c + "_month_cos"] = np.cos(2 * np.pi * d.dt.month / 12)',
+      '        df[c + "_dow"] = d.dt.dayofweek', '        df[c + "_hour"] = d.dt.hour');
+    L.push('    return df', '', '');
+    return L;
+  }
+  function unsupPrep(ordinal) {
+    return ['def make_prep():', '    """Impute, ' + (ordinal ? 'and encode categories as integers (trees need no scaling)' : 'scale and one-hot encode, so every column counts on the same scale') + '."""',
+      ordinal ? '    numeric = SimpleImputer(strategy="median")' : '    numeric = Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", StandardScaler())])',
+      ordinal ? '    categorical = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)' : '    categorical = OneHotEncoder(handle_unknown="ignore", min_frequency=10, sparse_output=False)',
+      '    return ColumnTransformer([("num", numeric, NUM_FEATURES), ("cat", categorical, CAT_FEATURES)], sparse_threshold=0)', '', ''];
+  }
+
+  /* ---------- template: anomaly detection on rows */
+  var DETECT = {
+    iforest: { imp: 'from sklearn.ensemble import IsolationForest', est: 'IsolationForest(n_estimators=300, max_samples="auto", random_state=SEED, n_jobs=-1)', ordinal: true },
+    lof: { imp: 'from sklearn.neighbors import LocalOutlierFactor', est: 'LocalOutlierFactor(n_neighbors=35, novelty=True)' },
+    ocsvm: { imp: 'from sklearn.svm import OneClassSVM', est: 'OneClassSVM(nu=0.05, gamma="scale")' },
+    robustcov: { imp: 'from sklearn.covariance import EllipticEnvelope', est: 'EllipticEnvelope(support_fraction=None, random_state=SEED)' }
+  };
+  function genAnom(spec, m, d, title) {
+    var D = DETECT[m.slug], label = d.target && d.targetType === 'boolean', watched = d.target && d.targetType === 'numeric', tuned = spec.tune && RI.tunable(spec, m);
+    var L = [header(spec, m, d, title, ['', 'Unsupervised: the detector learns what normal rows look like and scores every row by how unusual it is.',
+      label ? 'Your label column is never used for fitting, only to measure the detector afterwards.' : 'No labels needed. Add a true/false column of known anomalies as y to measure it.', '',
+      'Run:', '    pip install -r requirements.txt', '    python train.py             # ' + (tuned ? 'tunes against your labels, ' : '') + 'scores every row -> anomalies.csv, saves model.joblib',
+      '    python predict.py new.csv   # scores new rows -> predictions.csv'])];
+    L.push('import warnings', '', 'import joblib', 'import numpy as np');
+    if (tuned) L.push('import optuna');
+    L.push('import pandas as pd', 'from sklearn.compose import ColumnTransformer', 'from sklearn.impute import SimpleImputer');
+    if (label) L.push('from sklearn.metrics import average_precision_score, roc_auc_score');
+    if (tuned) L.push('from sklearn.model_selection import StratifiedKFold');
+    L.push('from sklearn.pipeline import Pipeline', 'from sklearn.preprocessing import ' + (D.ordinal ? 'OrdinalEncoder' : 'OneHotEncoder, StandardScaler'), D.imp, '', 'warnings.filterwarnings("ignore")', '');
+    var hasDates = unsupColumns(spec, d, L, watched);
+    L.push('LABEL = ' + (label ? py(d.target) + '  # known anomalies (true/false): only to measure, never to fit' : 'None  # mark a true/false column of known anomalies as y to measure the detector'));
+    L.push('CONTAMINATION = 0.01  # expected share of anomalies: sets the flag threshold, not the scores', 'TOP = 15  # most unusual rows to print');
+    if (tuned) L = L.concat(tuneConfig(30, 900, 5, 'Optuna search scored by average precision against LABEL'));
+    L.push('', boolParse(), '', '');
+    L = L.concat(unsupLoad(hasDates), unsupPrep(D.ordinal));
+    L.push('def make_model():', '    return Pipeline([("prep", make_prep()), ("model", ' + D.est + ')])', '', '',
+      'def anomaly_score(model, X):', '    """Higher = more unusual. (scikit-learn\'s score_samples is higher = more normal, so it is flipped.)"""', '    return -model.score_samples(X)', '', '');
+    if (m.slug === 'lof') L.push('def train_scores(model, X):', '    """LOF judges each training row by its neighbours, leaving the row itself out."""', '    return -model[-1].negative_outlier_factor_', '', '');
+    L.push('def explain(df, scores, top):', '    """Why the top rows look odd: their numeric columns furthest from typical, as robust z-scores."""',
+      '    if not NUMERIC:', '        return', '    num = df[NUMERIC].astype(float)', '    med = num.median()',
+      '    mad = ((num - med).abs().median() * 1.4826).replace(0, np.nan)', '    z = (num - med) / mad',
+      '    for i in np.argsort(-scores)[:top]:', '        cols = z.iloc[i].abs().sort_values(ascending=False).head(3).index',
+      '        why = ", ".join(f"{c} = {num[c].iloc[i]:,.4g} (z {z[c].iloc[i]:+.1f})" for c in cols)',
+      '        print(f"  row {df.index[i]:>7}  score {scores[i]:.4f}   {why}")', '', '');
+    if (label) L.push('def evaluate(y, scores, flags):', '    """How the scores line up with the known anomalies."""',
+      '    k = max(int(y.sum()), 1)', '    top = np.argsort(-scores)[:k]',
+      '    print(f"  ROC AUC        {roc_auc_score(y, scores):.4f}   (0.5 = random)")',
+      '    print(f"  PR AUC (AP)    {average_precision_score(y, scores):.4f}   (random: {y.mean():.4f})")',
+      '    print(f"  precision@{k:<5}{y[top].mean():.4f}   (share of the {k} highest scores that are real anomalies)")',
+      '    if flags.any():', '        print(f"  flagged rows: {y[flags].mean():.1%} are real anomalies; they catch {flags[y == 1].mean():.1%} of all anomalies")', '', '');
+    if (tuned) {
+      L = L.concat(spaceFn(SPACE[m.slug]), WITH_PARAMS);
+      L.push('def tune(X, y):', '    """Fit on the training folds (labels unseen), score the held-out fold, average the precision."""',
+        '    if y.sum() < FOLDS:', '        print("  too few labelled anomalies to tune; using the defaults")', '        return {}',
+        '    cv = StratifiedKFold(FOLDS, shuffle=True, random_state=SEED)', '',
+        '    def objective(trial):', '        params, aps = search_space(trial), []', '        for tr, va in cv.split(X, y):',
+        '            model = with_params(make_model(), params).fit(X.iloc[tr])', '            aps.append(average_precision_score(y[va], anomaly_score(model, X.iloc[va])))',
+        '        return float(np.mean(aps))', '');
+      L = L.concat(studyLines('maximize', 'CV average precision'), ['', '']);
+    }
+    L.push('def main():', '    raw = load(DATA)', '    df = add_features(raw)');
+    if (label) L.push('    y = df[LABEL].astype(str).str.strip().str.lower().map(TRUTHY).fillna(0).to_numpy(int)', '    print(f"{len(df):,} rows, {y.sum():,} labelled anomalies ({y.mean():.2%})")');
+    else L.push('    print(f"{len(df):,} rows")');
+    if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS}-fold CV, up to {TUNE_TRIALS} trials):")', '        params = tune(df[FEATURES], y)', '    model = with_params(make_model(), params).fit(df[FEATURES])');
+    else L.push('    model = make_model().fit(df[FEATURES])');
+    L.push('    scores = ' + (m.slug === 'lof' ? 'train_scores' : 'anomaly_score') + '(model, df[FEATURES])', '    threshold = float(np.quantile(scores, 1 - CONTAMINATION))', '    flags = scores >= threshold',
+      '    print(f"\\nFlagged {flags.sum():,} rows: the top {CONTAMINATION:.1%} of scores (threshold {threshold:.4f})")');
+    if (label) L.push('    print("\\nAgainst your labels:")', '    evaluate(y, scores, flags)');
+    L.push('    print("\\nThe most unusual rows, and what stands out:")', '    explain(df, scores, TOP)',
+      '    out = raw.assign(anomaly_score=scores, is_anomaly=flags).sort_values("anomaly_score", ascending=False)', '    out.to_csv("anomalies.csv", index=False)',
+      '    joblib.dump({"model": model, "features": FEATURES, "threshold": threshold}, "model.joblib")',
+      '    print("\\nWrote anomalies.csv (most unusual first) and model.joblib. Next: python predict.py new.csv")', '', '', 'if __name__ == "__main__":', '    main()', '');
+    var P = ['"""Score new rows with the detector from train.py.', '', '    python predict.py new.csv [predictions.csv]', '', 'new.csv needs the same columns as ' + spec.file + '.', '"""',
+      'import sys', '', 'import joblib', '', 'from train import add_features, anomaly_score, load', '', '',
+      'def main(path, out="predictions.csv"):', '    bundle = joblib.load("model.joblib")', '    df = load(path)',
+      '    scores = anomaly_score(bundle["model"], add_features(df)[bundle["features"]])',
+      '    result = df.assign(anomaly_score=scores, is_anomaly=scores >= bundle["threshold"])', '    result.to_csv(out, index=False)',
+      '    print(f"Scored {len(result):,} rows, {int(result.is_anomaly.sum()):,} flagged -> {out}")', '', '',
+      'if __name__ == "__main__":', '    if len(sys.argv) < 2:', '        sys.exit("usage: python predict.py new.csv [predictions.csv]")', '    main(*sys.argv[1:3])', ''];
+    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m, ['joblib>=1.3', 'scikit-learn>=1.4'], tuned) };
+  }
+
+  /* ---------- template: anomalies in a metric over time (STL residuals) */
+  function genAnomTS(spec, m, d, title) {
+    var f = RI.FREQ[spec.freq];
+    var L = [header(spec, m, d, title, ['', 'Per series: STL splits the metric into trend + season + remainder; a remainder far from typical',
+      '(robust z-score above Z) is flagged. Every flag comes with the value it expected instead.', '',
+      'Run:', '    pip install -r requirements.txt', '    python train.py                 # flags anomalies in ' + spec.file + ' -> anomalies.csv',
+      '    python predict.py [recent.csv]  # the same on newer data -> predictions.csv'])];
+    L.push('import sys', 'import warnings', '', 'import numpy as np', 'import pandas as pd', 'from statsmodels.tsa.seasonal import STL', '', 'warnings.filterwarnings("ignore")', '');
+    L.push('DATA = ' + py(spec.file), 'TARGET = ' + py(d.target) + '  # the metric you watch', 'TIME = ' + py(d.time),
+      'GROUPS = ' + pyList(d.groups, 9) + '  # one series per group; [] = a single series',
+      'SEASON = ' + f.season + '  # season length for ' + f.name.toLowerCase() + ' data', 'Z = 3.5  # flag when |robust z| is above this', 'SERIES = GROUPS or ["_series"]');
+    if (spec.tune) L.push('# Cross-validated tuning: not available here (no labels to score against). Lower Z to flag more.');
+    L.push('', '', 'def load(path):', '    df = pd.read_csv(path)', '    df[TIME] = pd.to_datetime(df[TIME], errors="coerce")', '    df[TARGET] = pd.to_numeric(df[TARGET], errors="coerce")',
+      '    for c in GROUPS:', '        df[c] = df[c].fillna("NA").astype(str)', '    if not GROUPS:', '        df["_series"] = "all"',
+      '    return df.dropna(subset=[TIME]).sort_values(SERIES + [TIME]).reset_index(drop=True)', '', '',
+      'def detect(s):', '    """One series -> expected value, robust z-score and flag for every row."""',
+      '    y = s[TARGET].interpolate().bfill().ffill().to_numpy(float)',
+      '    if SEASON > 1 and len(y) >= 2 * SEASON:', '        fit = STL(y, period=SEASON, robust=True).fit()', '        expected = fit.trend + fit.seasonal',
+      '    else:  # too short for a season: a rolling median is the expectation', '        expected = pd.Series(y).rolling(7, center=True, min_periods=1).median().to_numpy()',
+      '    resid = y - expected', '    mad = np.median(np.abs(resid - np.median(resid))) * 1.4826 or 1e-9', '    z = (resid - np.median(resid)) / mad',
+      '    return s.assign(expected=expected, z=z, is_anomaly=np.abs(z) > Z)', '', '',
+      'def run(df):', '    return pd.concat([detect(s) for _, s in df.groupby(SERIES, sort=False)], ignore_index=True)', '', '',
+      'def main(path=DATA, out="anomalies.csv"):', '    df = load(path)', '    res = run(df)', '    flagged = res[res.is_anomaly]',
+      '    print(f"{len(res):,} rows in {df.groupby(SERIES).ngroups} series; flagged {len(flagged):,} ({len(flagged) / max(len(res), 1):.2%}) with |z| > {Z}")',
+      '    print("\\nThe largest surprises:")', '    for _, r in flagged.reindex(flagged.z.abs().sort_values(ascending=False).index).head(15).iterrows():',
+      '        tag = " ".join(str(r[c]) for c in GROUPS) + "  " if GROUPS else ""',
+      '        print(f"  {tag}{r[TIME]}  {TARGET} {r[TARGET]:,.4g}, expected {r[\'expected\']:,.4g}  (z {r[\'z\']:+.1f})")',
+      '    (res if GROUPS else res.drop(columns=["_series"])).to_csv(out, index=False)', '    print(f"\\nWrote {out}")', '', '',
+      'if __name__ == "__main__":', '    main(*sys.argv[1:2])', '');
+    var P = ['"""Flag anomalies in newer data. STL refits on whatever history you pass, so there is no model file.', '', '    python predict.py [recent.csv] [predictions.csv]', '',
+      'recent.csv: same columns as ' + spec.file + ', ideally with a few seasons of history before the part you check.', '"""',
+      'import sys', '', 'from train import DATA, main', '', '', 'if __name__ == "__main__":', '    main((sys.argv[1:2] or [DATA])[0], (sys.argv[2:3] or ["predictions.csv"])[0])', ''];
+    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m) };
+  }
+
+  /* ---------- template: clustering */
+  var CLUS = {
+    kmeans: { imp: ['from sklearn.cluster import KMeans'], params: '{}', pick: 'silhouette', kname: 'n_clusters',
+      fn: ['    model = KMeans(n_init="auto", random_state=SEED, **params).fit(Z)', '    return model.labels_, model'] },
+    gmm: { imp: ['from sklearn.mixture import GaussianMixture'], params: '{"covariance_type": "full"}', pick: 'bic', kname: 'n_components',
+      fn: ['    model = GaussianMixture(random_state=SEED, n_init=2, **params).fit(Z)', '    return model.predict(Z), model'] },
+    hdbscan: { imp: ['from sklearn.cluster import HDBSCAN', 'from sklearn.neighbors import KNeighborsClassifier'], params: '{"min_cluster_size": 25, "min_samples": None}', pick: null,
+      fn: ['    labels = HDBSCAN(**params).fit_predict(Z)', '    return labels, KNeighborsClassifier(n_neighbors=5).fit(Z, labels)  # HDBSCAN cannot label new rows itself'] },
+    agglo: { imp: ['from sklearn.cluster import AgglomerativeClustering', 'from sklearn.neighbors import NearestCentroid'], params: '{"linkage": "ward"}', pick: 'silhouette', kname: 'n_clusters',
+      fn: ['    rng = np.random.default_rng(SEED)', '    idx = np.sort(rng.choice(len(Z), MAX_ROWS, replace=False)) if len(Z) > MAX_ROWS else np.arange(len(Z))',
+        '    fitted = AgglomerativeClustering(**params).fit_predict(Z[idx])  # O(n^2) memory: fit on at most MAX_ROWS rows',
+        '    assign = NearestCentroid().fit(Z[idx], fitted)', '    labels = assign.predict(Z)', '    labels[idx] = fitted', '    return labels, assign'] }
+  };
+  function genClus(spec, m, d, title) {
+    var C = CLUS[m.slug], tuned = spec.tune && RI.tunable(spec, m), prof = d.target;
+    var L = [header(spec, m, d, title, ['', 'Groups similar rows. There is no target: the groups are judged by how tight and well separated they are',
+      '(silhouette, Davies-Bouldin), then described in your own columns so you can name them.', '',
+      'Run:', '    pip install -r requirements.txt', '    python train.py             # ' + (tuned ? 'tunes, then ' : '') + 'clusters every row -> clusters.csv, saves model.joblib',
+      '    python predict.py new.csv   # assigns new rows to the clusters -> predictions.csv'])];
+    L.push('import warnings', '', 'import joblib', 'import numpy as np');
+    if (tuned) L.push('import optuna');
+    L.push('import pandas as pd', 'from sklearn.compose import ColumnTransformer', 'from sklearn.impute import SimpleImputer',
+      'from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score', 'from sklearn.pipeline import Pipeline',
+      'from sklearn.preprocessing import OneHotEncoder, StandardScaler', C.imp.join('\n'), '', 'warnings.filterwarnings("ignore")', '');
+    var hasDates = unsupColumns(spec, d, L, false);
+    L.push('PROFILE = ' + (prof ? py(prof) + '  # described per cluster, never used to form them' : 'None  # a column to describe per cluster (never used to form them)'));
+    L.push('PARAMS = ' + C.params);
+    if (C.pick) L.push('K_RANGE = range(2, 11)  # numbers of clusters to try');
+    if (m.slug === 'agglo') L.push('MAX_ROWS = 20000  # hierarchical clustering is O(n^2) in memory; the rest join the nearest centroid');
+    L.push('SAMPLE = 5000  # rows used for silhouette scores (they cost O(n^2))');
+    if (tuned) L = L.concat(tuneConfig(40, 900, 0, 'Optuna search maximising the silhouette (an internal score: there are no labels)'));
+    L.push('', boolParse(), '', '');
+    L = L.concat(unsupLoad(hasDates), unsupPrep(false));
+    L.push('def cluster(Z, params):', '    """Cluster the encoded rows. Returns (labels, a model that assigns new rows)."""');
+    L = L.concat(C.fn);
+    L.push('', '', 'def silhouette(Z, labels):', '    """Silhouette on a sample; noise points (label -1) are left out."""', '    ok = labels >= 0',
+      '    if len(set(labels[ok])) < 2:', '        return -1.0', '    return float(silhouette_score(Z[ok], labels[ok], sample_size=min(SAMPLE, int(ok.sum())), random_state=SEED))', '', '');
+    if (C.pick === 'silhouette') L.push('def choose_k(Z):', '    """Try every k in K_RANGE and keep the best silhouette."""', '    best = None', '    for k in K_RANGE:',
+      '        s = silhouette(Z, cluster(Z, dict(PARAMS, ' + C.kname + '=k))[0])', '        print(f"  k = {k:2d}   silhouette {s:.4f}")', '        if best is None or s > best[1]:', '            best = (k, s)',
+      '    return dict(PARAMS, ' + C.kname + '=best[0])', '', '');
+    if (C.pick === 'bic') L.push('def choose_k(Z):', '    """Try every K in K_RANGE and keep the lowest BIC (fit vs. number of parameters)."""', '    best = None', '    for k in K_RANGE:',
+      '        bic = cluster(Z, dict(PARAMS, ' + C.kname + '=k))[1].bic(Z)', '        print(f"  K = {k:2d}   BIC {bic:,.1f}")', '        if best is None or bic < best[1]:', '            best = (k, bic)',
+      '    return dict(PARAMS, ' + C.kname + '=best[0])', '', '');
+    if (tuned) {
+      L = L.concat(spaceFn(SPACE[m.slug]));
+      L.push('def tune(Z):', '    """Optuna over the settings above, maximising the silhouette."""', '', '    def objective(trial):', '        return silhouette(Z, cluster(Z, search_space(trial))[0])', '');
+      L = L.concat(studyLines('maximize', 'silhouette'), ['', '']);
+    }
+    L.push('def profile(df, labels):', '    """What each cluster looks like, in your own columns."""', '    g = df.assign(cluster=labels).groupby("cluster")',
+      '    table = pd.DataFrame({"rows": g.size(), "share": g.size() / len(df)})', '    for c in NUMERIC + BOOLEAN:', '        table[c] = g[c].mean()',
+      '    for c in CATEGORICAL:', '        table[c] = g[c].agg(lambda s: s.mode().iat[0] if len(s.mode()) else "")',
+      '    if PROFILE:', '        y = pd.to_numeric(df[PROFILE], errors="coerce")', '        if y.isna().all():  # true/false or text: the share of truthy values',
+      '            y = df[PROFILE].astype(str).str.strip().str.lower().map(TRUTHY)', '        table[PROFILE + " (mean)"] = y.groupby(labels).mean()', '    return table', '', '',
+      'def main():', '    raw = load(DATA)', '    df = add_features(raw)', '    prep = make_prep().fit(df[FEATURES])', '    Z = prep.transform(df[FEATURES])',
+      '    print(f"{len(df):,} rows, {Z.shape[1]} columns after encoding")', '    params = PARAMS');
+    if (tuned) {
+      L.push('    if TUNE:', '        print(f"\\nTuning (up to {TUNE_TRIALS} trials):")', '        params = tune(Z)');
+      if (C.pick) L.push('    else:', '        print("\\nChoosing the number of clusters:")', '        params = choose_k(Z)');
+    } else if (C.pick) L.push('    print("\\nChoosing the number of clusters:")', '    params = choose_k(Z)');
+    L.push('    labels, assigner = cluster(Z, params)', '    k = len(set(labels) - {-1})', '    ok = labels >= 0',
+      '    print(f"\\n{k} clusters" + (f", {np.sum(~ok):,} rows left as noise" if (~ok).any() else ""))',
+      '    if k >= 2:', '        print(f"  silhouette         {silhouette(Z, labels):.4f}   (1 = tight and separate, 0 = overlapping)")',
+      '        print(f"  Davies-Bouldin     {davies_bouldin_score(Z[ok], labels[ok]):.4f}   (lower is better)")',
+      '        print(f"  Calinski-Harabasz  {calinski_harabasz_score(Z[ok], labels[ok]):,.1f}   (higher is better)")',
+      '    print("\\nWhat the clusters look like:")', '    with pd.option_context("display.width", 200, "display.max_columns", 40, "display.float_format", "{:,.3g}".format):',
+      '        print(profile(df, labels).to_string())', '    raw.assign(cluster=labels).to_csv("clusters.csv", index=False)',
+      '    joblib.dump({"prep": prep, "assigner": assigner, "features": FEATURES, "params": params}, "model.joblib")',
+      '    print("\\nWrote clusters.csv and model.joblib. Next: python predict.py new.csv")', '', '', 'if __name__ == "__main__":', '    main()', '');
+    var P = ['"""Assign new rows to the clusters found by train.py.', '', '    python predict.py new.csv [predictions.csv]', '', 'new.csv needs the same columns as ' + spec.file + '.', '"""',
+      'import sys', '', 'import joblib', '', 'from train import add_features, load', '', '',
+      'def main(path, out="predictions.csv"):', '    bundle = joblib.load("model.joblib")', '    df = load(path)',
+      '    Z = bundle["prep"].transform(add_features(df)[bundle["features"]])', '    result = df.assign(cluster=bundle["assigner"].predict(Z))'];
+    if (m.slug === 'gmm') P.push('    proba = bundle["assigner"].predict_proba(Z)  # soft memberships', '    for k in range(proba.shape[1]):', '        result[f"p_cluster_{k}"] = proba[:, k]');
+    P.push('    result.to_csv(out, index=False)', '    print(f"Assigned {len(result):,} rows -> {out}")', '', '',
+      'if __name__ == "__main__":', '    if len(sys.argv) < 2:', '        sys.exit("usage: python predict.py new.csv [predictions.csv]")', '    main(*sys.argv[1:3])', '');
+    return { train: L.join('\n'), predict: P.join('\n'), requirements: req(m, ['joblib>=1.3', 'scikit-learn>=1.4'], tuned) };
   }
 
   /* spec + model slug -> {train, predict, requirements} */
@@ -1790,9 +2438,13 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     spec = RI.cleanSpec(spec);
     var m = RI.MODEL[slug], d = RI.derive(spec);
     if (!m) return null;
-    title = title || (m.name + ' for ' + (d.target || 'your target'));
+    title = title || (m.name + ' for ' + (spec.task === 'cluster' ? 'segments' : spec.task === 'anomaly' && !d.target ? 'unusual rows' : d.target || 'your target'));
     if (m.tmpl === 'tab') return spec.task === 'forecast' ? genTabForecast(spec, m, d, title) : genTab(spec, m, d, title);
     if (m.tmpl === 'torch') return genTorch(spec, m, d, title);
+    if (m.tmpl === 'fm') return genFM(spec, m, d, title);
+    if (m.tmpl === 'anom') return genAnom(spec, m, d, title);
+    if (m.tmpl === 'anomts') return genAnomTS(spec, m, d, title);
+    if (m.tmpl === 'clus') return genClus(spec, m, d, title);
     return genStat(spec, m, d, title);
   };
   RI.FILES = [['train', 'train.py'], ['predict', 'predict.py'], ['requirements', 'requirements.txt']];
@@ -1829,7 +2481,8 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       return '<button type="button" class="ri-file' + (f[0] === active ? ' on' : '') + '" data-file="' + f[0] + '">' + f[1] + '</button>';
     }).join('') + '<span class="ui-spacer"></span>' + (extraButtons || '') +
       '<button type="button" class="ui-btn sm ghost" data-copy title="Copy ' + name + '">' + UI.icon('copy') + '<span>Copy</span></button>' +
-      '<button type="button" class="ui-btn sm ghost" data-download title="Download ' + name + '">' + UI.icon('download') + '<span>.py</span></button></div>' +
+      '<button type="button" class="ui-btn sm ghost" data-download title="Download ' + name + '">' + UI.icon('download') + '<span>' + (active === 'requirements' ? '.txt' : '.py') + '</span></button>' +
+      '<button type="button" class="ui-btn sm ghost" data-ipynb title="Download all three files as one Jupyter notebook">' + UI.icon('notebook') + '<span>.ipynb</span></button></div>' +
       '<pre aria-label="' + esc(name) + '">' + body + '</pre></div>';
   };
   RI.copy = function (text) {
@@ -1850,7 +2503,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   };
   /* Wire a container's code block: file tabs, copy, download. getFiles() returns the current files. */
-  RI.wireCode = function (root, getFiles, onTab) {
+  RI.wireCode = function (root, getFiles, onTab, getMeta) {
     root.addEventListener('click', function (e) {
       var f = e.target.closest('[data-file]');
       if (f && f.closest('[data-code]')) { onTab(f.getAttribute('data-file')); return; }
@@ -1858,7 +2511,62 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       var name = RI.FILES.filter(function (x) { return x[0] === key; })[0][1];
       if (e.target.closest('[data-copy]')) RI.copy(getFiles()[key] || '');
       if (e.target.closest('[data-download]')) RI.download(name, getFiles()[key] || '');
+      if (e.target.closest('[data-ipynb]')) {
+        var meta = getMeta ? getMeta() : {};
+        var base = String(meta.title || 'robointern-listing').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'listing';
+        RI.download(base + '.ipynb', RI.notebook(getFiles(), meta));
+        UI.toast('Notebook downloaded: open it in Jupyter, VS Code or Colab', 'ok');
+      }
     });
+  };
+
+  /* ------------------------------------------------------------------ Jupyter notebook export
+     files {train, predict, requirements} + meta {title, model, spec, notes} -> .ipynb JSON text.
+     train.py becomes one cell per top-level block (they are separated by two blank lines), main() runs in its own
+     cell, and predict.py's main() becomes predict_new() in the same namespace (no "from train import"). */
+  RI.notebook = function (files, meta) {
+    meta = meta || {}; files = files || {};
+    var spec = RI.cleanSpec(meta.spec || {}), m = RI.MODEL[meta.model] || null, cells = [];
+    var lines = function (text) { var a = String(text).split('\n'); return a.map(function (l, i) { return i < a.length - 1 ? l + '\n' : l; }); };
+    var md = function (text) { cells.push({ cell_type: 'markdown', id: 'c' + cells.length, metadata: {}, source: lines(text) }); };
+    var code = function (text) {
+      text = String(text || '').replace(/^\n+|\s+$/g, '');
+      if (text) cells.push({ cell_type: 'code', id: 'c' + cells.length, metadata: {}, execution_count: null, outputs: [], source: lines(text) });
+    };
+    var docOf = function (src) { var x = /^"""([\s\S]*?)"""/.exec(src || ''); return x ? x[1].split('\nRun:')[0].trim() : ''; };
+    var noDoc = function (src) { return String(src || '').replace(/^"""[\s\S]*?"""\n*/, ''); };
+    var role = { feature: 'feature x', target: spec.task === 'cluster' ? 'profile only' : spec.task === 'anomaly' ? 'label / watched metric' : 'target y', time: 'time t', group: 'series g', ignore: 'ignored' };
+    var head = ['# ' + (meta.title || (m ? m.name : 'RoboIntern listing')), ''];
+    if (m) head.push('**Model:** ' + m.name + ' (' + m.lib + ') · **Task:** ' + (RI.TASKS[spec.task] || spec.task) + ' · **Data:** `' + spec.file + '`', '', m.summary, '');
+    if (meta.notes) head.push('> ' + String(meta.notes).replace(/\n/g, '\n> '), '');
+    if (m && m.eq) head.push('$$' + m.eq.replace(/\n/g, ' ') + '$$', '');
+    if (m && m.obj) head.push('**Objective.** $$' + m.obj.replace(/\n/g, ' ') + '$$', '');
+    if (spec.columns.length) {
+      head.push('| column | role | type |', '|---|---|---|');
+      spec.columns.forEach(function (c) { head.push('| `' + c.name.replace(/\|/g, '\\|') + '`' + (c.key ? ' ★' : '') + ' | ' + role[c.role] + (c.known && spec.task === 'forecast' ? ', known ahead' : '') + ' | ' + c.type + ' |'); });
+      head.push('');
+    }
+    head.push('*Written by RoboIntern on ' + today() + '. Put `' + spec.file + '` next to this notebook and run the cells from top to bottom.*');
+    md(head.join('\n'));
+    var reqs = String(files.requirements || '').split('\n').map(function (l) { return l.replace(/#.*$/, '').trim(); }).filter(Boolean);
+    md('## Setup');
+    code('%pip install -q ' + reqs.map(function (r) { return '"' + r + '"'; }).join(' '));
+    var doc = docOf(files.train);
+    md('## The code\n' + (doc ? doc.split('\n').slice(1).join('\n').trim() + '\n\n' : '') + 'Configuration first: change the constants in the next cell to fit your data.');
+    var hasMain = false;
+    noDoc(files.train).split(/\n{3,}/).forEach(function (b) { if (/^\s*if __name__ == "__main__":/.test(b)) hasMain = true; else code(b); });
+    if (hasMain) { md('## Train and evaluate'); code('main()'); }
+    if (files.predict) {
+      var pdoc = docOf(files.predict), p = noDoc(files.predict).replace(/^from train import .*\n/m, '');
+      var hasFn = /\ndef main\(/.test('\n' + p);
+      p = p.replace(/(^|\n)def main\(/, '$1def predict_new(');
+      md('## Predict\n' + (pdoc ? pdoc.split('\n')[0] : 'Use the trained model.'));
+      p.split(/\n{3,}/).forEach(function (b) { if (!/^\s*if __name__ == "__main__":/.test(b)) code(b); });
+      if (!hasFn) code('main(DATA, "predictions.csv")');
+      else if (spec.task === 'forecast') code('predict_new()');
+      else code('from pathlib import Path\n\nif Path("new.csv").exists():\n    predict_new("new.csv")\nelse:\n    print("Put the rows to score in new.csv (same columns as ' + spec.file.replace(/"/g, '') + '), then run this cell again.")');
+    }
+    return JSON.stringify({ cells: cells, metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' }, language_info: { name: 'python' } }, nbformat: 4, nbformat_minor: 5 }, null, 1) + '\n';
   };
 
   /* ------------------------------------------------------------------ dataset notation: D = {(t, g, x, y)} */
@@ -1868,12 +2576,16 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     if (d.groups.length) parts.push('g_i');
     var nNum = d.num.length + d.bool.length, nCat = d.cat.length, nTxt = d.txt.length;
     if (nNum + nCat + nTxt + d.dates.length) parts.push('\\mathbf x_i');
-    parts.push('y_i');
+    if (d.target || (spec.task !== 'cluster' && spec.task !== 'anomaly')) parts.push('y_i');
     if (nNum) dims.push('\\mathbb R^{' + nNum + '}');
     if (nCat) dims.push('\\mathcal C^{' + nCat + '}');
     if (nTxt) dims.push('\\Sigma^{*' + (nTxt > 1 ? nTxt : '') + '}');
     if (d.dates.length) dims.push('\\mathcal T^{' + d.dates.length + '}');
     var ySpace = spec.task === 'binary' ? '\\{0, 1\\}' : spec.task === 'multiclass' ? '\\{1, \\dots, K\\}' : '\\mathbb R';
+    if (spec.task === 'cluster' || spec.task === 'anomaly') {
+      var tu = '\\mathcal D = \\{(' + parts.join(', ') + ')\\}_{i=1}^{n}' + (dims.length ? ',\\quad \\mathbf x \\in ' + dims.join(' \\times ') : '');
+      return tu + (spec.task === 'cluster' ? ',\\quad \\text{find } c: \\mathcal X \\to \\{1, \\dots, K\\}' : ',\\quad \\text{score } s(\\mathbf x_i),\\ \\text{flag the top } \\varepsilon');
+    }
     var tex = '\\mathcal D = \\{(' + parts.join(', ') + ')\\}_{i=1}^{n}';
     if (dims.length) tex += ',\\quad \\mathbf x \\in ' + dims.join(' \\times ');
     tex += ',\\quad y \\in ' + ySpace;
@@ -1893,7 +2605,13 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       tweak: function (c) { if (c.name === 'temp_c') c.key = true; }, task: 'forecast', freq: 'H', horizon: 48, rows: 'l' },
     { key: 'icecream', name: 'Monthly units', text: 'month,units\n2018-01-01,1204\n2018-02-01,1350\n2018-03-01,1802', task: 'forecast', freq: 'M', horizon: 12, rows: 'xs', intervals: true },
     { key: 'wine', name: 'Wine quality bands', text: 'fixed_acidity;volatile_acidity;citric_acid;residual_sugar;chlorides;sulphates;alcohol;quality_band\n7.4;0.70;0.00;1.9;0.076;0.56;9.4;low\n7.8;0.88;0.00;2.6;0.098;0.68;9.8;mid',
-      tweak: function (c) { if (c.name === 'alcohol' || c.name === 'volatile_acidity') c.key = true; }, task: 'multiclass', rows: 's' }
+      tweak: function (c) { if (c.name === 'alcohol' || c.name === 'volatile_acidity') c.key = true; }, task: 'multiclass', rows: 's' },
+    { key: 'fraud', name: 'Card transactions', text: 'txn_id,amount_eur,merchant_category,country,hour_of_day,km_from_home,card_present,is_fraud\nT-90211,42.50,grocery,FR,18,2.1,true,false\nT-90212,1890.00,electronics,NG,3,5210.4,false,true',
+      tweak: function (c) { if (c.name === 'amount_eur' || c.name === 'km_from_home') { c.key = true; c.role = 'feature'; } if (c.name === 'is_fraud') c.role = 'target'; }, task: 'anomaly', rows: 'l' },
+    { key: 'segments', name: 'Customer segments', text: 'customer_id,age,annual_income_k,visits_per_month,avg_basket_eur,channel,loyalty_member\nC-501,34,52,6,38.20,app,yes\nC-502,61,78,2,112.90,store,no',
+      tweak: function (c) { if (c.role === 'target') c.role = 'feature'; if (c.name === 'avg_basket_eur' || c.name === 'visits_per_month') c.key = true; }, task: 'cluster', rows: 'm' },
+    { key: 'latency', name: 'API latency monitor', text: 'timestamp,endpoint,p95_latency_ms\n2025-05-01 00:00,/search,182\n2025-05-01 00:00,/checkout,240\n2025-05-01 01:00,/search,175',
+      tweak: function (c) { if (c.name === 'endpoint') { c.role = 'group'; c.type = 'categorical'; } }, task: 'anomaly', freq: 'H', rows: 'm' }
   ];
 })();
 
@@ -2029,7 +2747,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
 (function () {
   var esc = UI.esc;
   var TABS = [['', 'Models', 'sigma'], ['features', 'Feature development', 'sliders'], ['validation', 'Validation', 'grid'], ['metrics', 'Metrics', 'target'], ['compare', 'Compare', 'table']];
-  var TASK_ABBR = { forecast: 'F', regression: 'R', binary: 'B', multiclass: 'M' };
+  var TASK_ABBR = { forecast: 'F', regression: 'R', binary: 'B', multiclass: 'M', anomaly: 'A', cluster: 'C' };
 
   function famNo(m) {
     var fam = RI.MODELS.filter(function (x) { return x.family === m.family; });
@@ -2145,7 +2863,10 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     forecast: { columns: [{ name: 'date', type: 'datetime', role: 'time' }, { name: 'store', type: 'categorical', role: 'group' }, { name: 'promo', type: 'boolean', role: 'feature', key: true, known: true }, { name: 'sales', type: 'numeric', role: 'target' }], task: 'forecast', freq: 'D', horizon: 14, file: 'sales.csv' },
     regression: { columns: [{ name: 'city', type: 'categorical', role: 'feature', key: true }, { name: 'sqm', type: 'numeric', role: 'feature', key: true }, { name: 'rooms', type: 'numeric', role: 'feature' }, { name: 'price', type: 'numeric', role: 'target' }], task: 'regression', file: 'homes.csv' },
     binary: { columns: [{ name: 'plan', type: 'categorical', role: 'feature' }, { name: 'tickets', type: 'numeric', role: 'feature', key: true }, { name: 'spend', type: 'numeric', role: 'feature' }, { name: 'churned', type: 'boolean', role: 'target' }], task: 'binary', file: 'customers.csv' },
-    multiclass: { columns: [{ name: 'alcohol', type: 'numeric', role: 'feature', key: true }, { name: 'acidity', type: 'numeric', role: 'feature' }, { name: 'band', type: 'categorical', role: 'target' }], task: 'multiclass', file: 'wine.csv' }
+    multiclass: { columns: [{ name: 'alcohol', type: 'numeric', role: 'feature', key: true }, { name: 'acidity', type: 'numeric', role: 'feature' }, { name: 'band', type: 'categorical', role: 'target' }], task: 'multiclass', file: 'wine.csv' },
+    anomaly: { columns: [{ name: 'amount', type: 'numeric', role: 'feature', key: true }, { name: 'merchant', type: 'categorical', role: 'feature' }, { name: 'km_from_home', type: 'numeric', role: 'feature' }, { name: 'is_fraud', type: 'boolean', role: 'target' }], task: 'anomaly', file: 'transactions.csv' },
+    anomalyTs: { columns: [{ name: 'timestamp', type: 'datetime', role: 'time' }, { name: 'latency_ms', type: 'numeric', role: 'target' }], task: 'anomaly', freq: 'H', file: 'latency.csv' },
+    cluster: { columns: [{ name: 'age', type: 'numeric', role: 'feature' }, { name: 'income', type: 'numeric', role: 'feature', key: true }, { name: 'visits', type: 'numeric', role: 'feature' }, { name: 'channel', type: 'categorical', role: 'feature' }], task: 'cluster', file: 'customers.csv' }
   };
 
   function modelPage(m) {
@@ -2234,10 +2955,10 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       if (!d.matches || !d.matches('[data-example]') || !d.open) return;
       var box = d.querySelector('[data-ex-body]');
       if (box.innerHTML) return;
-      var m = RI.MODEL[a[1]], files = RI.generate(EX[m.tasks[0]], m.slug), cur = 'train';
-      var paint = function () { box.innerHTML = '<p class="small muted">Columns: ' + EX[m.tasks[0]].columns.map(function (c) { return '<code>' + esc(c.name) + '</code>'; }).join(' ') + '. Open the Lab to write one for your own data.</p>' + RI.codeBlock(files, cur); };
+      var m = RI.MODEL[a[1]], ex = EX[m.tmpl === 'anomts' ? 'anomalyTs' : m.tasks[0]], files = RI.generate(ex, m.slug), cur = 'train';
+      var paint = function () { box.innerHTML = '<p class="small muted">Columns: ' + ex.columns.map(function (c) { return '<code>' + esc(c.name) + '</code>'; }).join(' ') + '. Open the Lab to write one for your own data.</p>' + RI.codeBlock(files, cur); };
       paint();
-      RI.wireCode(box, function () { return files; }, function (k) { cur = k; paint(); });
+      RI.wireCode(box, function () { return files; }, function (k) { cur = k; paint(); }, function () { return { title: m.name + ' example', model: m.slug, spec: ex }; });
     }, true);
     draw();
     RI.whenTex(draw);
@@ -2323,7 +3044,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
           view.querySelector('[data-model]').innerHTML = '<option value="">All models</option>' + Object.keys(d.models).sort().map(function (k) {
             return '<option value="' + esc(k) + '">' + esc((RI.MODEL[k] || { name: k }).name) + ' (' + d.models[k] + ')</option>'; }).join('');
           view.querySelector('[data-tasks]').innerHTML = '<button type="button" data-task="" class="on">All</button>' + Object.keys(RI.TASKS).filter(function (t) { return d.tasks[t]; }).map(function (t) {
-            return '<button type="button" data-task="' + t + '">' + esc({ forecast: 'Forecast', regression: 'Regression', binary: 'Binary', multiclass: 'Multiclass' }[t]) + '</button>'; }).join('');
+            return '<button type="button" data-task="' + t + '">' + esc(RI.TASK_SHORT[t] || t) + '</button>'; }).join('');
         }
         list.innerHTML = d.items.length ? '<p class="small muted">' + UI.plural(d.total, 'listing') + '</p><div class="cm-grid">' + d.items.map(function (s) {
           var m = RI.MODEL[s.model] || { name: s.model };
@@ -2483,7 +3204,9 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       if (!sp) { S2.innerHTML = '<h2><span class="ri-sec">§2</span>Columns &amp; roles</h2><p class="lb-lead">Paste something in §1, or pick a sample, and your columns appear here.</p>'; return; }
       var fc = sp.task === 'forecast', xi = 0;
       S2.innerHTML = '<h2><span class="ri-sec">§2</span>Columns &amp; roles</h2><p class="lb-lead">Set each column\'s role and type. Star ★ the drivers you believe matter most: the code builds extra features around them.' +
-        (fc ? ' Tick <b>known ahead</b> for drivers you will know for the forecast period (promos, prices, holidays, weather forecasts).' : '') + '</p>' +
+        (fc ? ' Tick <b>known ahead</b> for drivers you will know for the forecast period (promos, prices, holidays, weather forecasts).' : '') +
+        (sp.task === 'anomaly' ? ' No target needed. A true/false <b>y</b> (known anomalies) is only used to measure the detector; a numeric <b>y</b> with a time column <b>t</b> is a metric to watch over time.' : '') +
+        (sp.task === 'cluster' ? ' No target needed: the features <b>x</b> form the groups. A <b>y</b>, if you keep one, is only described per cluster.' : '') + '</p>' +
         '<div class="lb-legend">' + RI.ROLES.map(function (r) { return '<span><span class="ri-role ' + r[0] + '">' + r[1] + '</span>' + r[2] + '</span>'; }).join('') + '<span>★ key driver</span></div>' +
         '<div class="lb-cols">' + sp.columns.map(function (c, i) {
           var idx = c.role === 'target' ? 'y' : c.role === 'time' ? 't' : c.role === 'group' ? 'g' : c.role === 'ignore' ? '∅' : 'x' + sub(++xi);
@@ -2508,16 +3231,18 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
 
     function drawS3() {
       var sp = spec();
-      if (!sp) { S3.innerHTML = '<h2><span class="ri-sec">§3</span>The task</h2><p class="lb-lead">Forecast, regression or classification: chosen for you once there is a target.</p>'; return; }
-      var f = RI.FREQ[sp.freq], w = sp.weights;
+      if (!sp) { S3.innerHTML = '<h2><span class="ri-sec">§3</span>The task</h2><p class="lb-lead">Forecast, regression, classification, anomalies or clusters: guessed once there are columns.</p>'; return; }
+      var f = RI.FREQ[sp.freq], w = sp.weights, d = RI.derive(sp), unsup = sp.task === 'anomaly' || sp.task === 'cluster';
       S3.innerHTML = '<h2><span class="ri-sec">§3</span>The task</h2><p class="lb-lead">Guessed from your target and time column. Change anything.</p>' +
         '<div class="ui-seg" role="group" aria-label="Task">' + Object.keys(RI.TASKS).map(function (t) { return '<button type="button" data-task="' + t + '" class="' + (sp.task === t ? 'on' : '') + '">' + RI.TASKS[t] + '</button>'; }).join('') + '</div>' +
-        (sp.task === 'forecast' ? '<div class="lb-fc"><label>Frequency<select data-freq>' + Object.keys(RI.FREQ).map(function (k) { return '<option value="' + k + '"' + (sp.freq === k ? ' selected' : '') + '>' + RI.FREQ[k].name + '</option>'; }).join('') + '</select></label>' +
-          '<label>Horizon h<input type="number" min="1" max="1000" value="' + sp.horizon + '" data-horizon style="width:96px"></label><span class="muted small" style="padding-bottom:9px">' + esc(f.unit) + ' ahead · season m = ' + f.season + '</span></div>' : '') +
+        (sp.task === 'forecast' || (sp.task === 'anomaly' && d.time) ? '<div class="lb-fc"><label>Frequency<select data-freq>' + Object.keys(RI.FREQ).map(function (k) { return '<option value="' + k + '"' + (sp.freq === k ? ' selected' : '') + '>' + RI.FREQ[k].name + '</option>'; }).join('') + '</select></label>' +
+          (sp.task === 'forecast' ? '<label>Horizon h<input type="number" min="1" max="1000" value="' + sp.horizon + '" data-horizon style="width:96px"></label><span class="muted small" style="padding-bottom:9px">' + esc(f.unit) + ' ahead · season m = ' + f.season + '</span>'
+            : '<span class="muted small" style="padding-bottom:9px">season m = ' + f.season + ' (for the over-time detector)</span>') + '</div>' : '') +
         '<div class="lb-row3"><div><span class="lb-field-label">How many rows?</span><div class="ui-seg" role="group" aria-label="Rows">' + RI.ROW_ORDER.map(function (r) {
           return '<button type="button" data-rows="' + r + '" class="' + (sp.rows === r ? 'on' : '') + '" title="' + esc(RI.ROWS[r]) + '">' + esc(RI.ROWS[r].replace(' rows', '')) + '</button>'; }).join('') + '</div>' +
-          '<div class="ui-stack" style="margin-top:16px"><label class="ui-check"><input type="checkbox" data-intervals' + (sp.intervals ? ' checked' : '') + '><span>I need prediction intervals (uncertainty)</span></label>' +
-          '<label class="ui-check"><input type="checkbox" data-missing' + (sp.missing ? ' checked' : '') + '><span>My data has missing values</span></label></div></div>' +
+          '<div class="ui-stack" style="margin-top:16px">' + (unsup ? '' : '<label class="ui-check"><input type="checkbox" data-intervals' + (sp.intervals ? ' checked' : '') + '><span>I need prediction intervals (uncertainty)</span></label>') +
+          '<label class="ui-check"><input type="checkbox" data-missing' + (sp.missing ? ' checked' : '') + '><span>My data has missing values</span></label>' +
+          '<label class="ui-check"><input type="checkbox" data-tune' + (sp.tune ? ' checked' : '') + '><span>Cross-validated tuning <span class="muted">(adds an Optuna search to the code)</span></span></label></div></div>' +
           '<div class="lb-simplex"><span class="lb-field-label">Priorities <span class="muted" style="font-weight:400">(drag the point)</span></span>' + simplexSvg(w) +
           '<div class="w" data-w>' + RI.tex('\\mathbf w = (' + w.acc.toFixed(2) + ',\\ ' + w.interp.toFixed(2) + ',\\ ' + w.speed.toFixed(2) + ')', false) + '</div></div></div>';
     }
@@ -2554,11 +3279,13 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
         return;
       }
       var m = RI.MODEL[st.pick], d = RI.derive(sp);
-      S5.innerHTML = '<div class="lb-code-head"><div><span class="ri-sec">§5</span><span class="ri-listing-no">Listing</span><h2>' + esc(m.name) + ' for <code>' + esc(d.target) + '</code></h2></div>' +
+      var what = sp.task === 'cluster' ? 'segments' : sp.task === 'anomaly' && !d.target ? 'unusual rows' : '<code>' + esc(d.target) + '</code>';
+      var tuneNote = sp.tune && !RI.tunable(sp, m) ? '<p class="small muted" style="margin:-4px 0 10px">' + (m.tmpl === 'fm' ? esc(m.short) + ' is zero-shot: there is nothing to tune.' : sp.task === 'anomaly' && m.tmpl === 'anom' ? 'Tuning needs a true/false column of known anomalies as y to score against.' : esc(m.short) + ' fits its own parameters, so the listing has no search.') + '</p>' : '';
+      S5.innerHTML = '<div class="lb-code-head"><div><span class="ri-sec">§5</span><span class="ri-listing-no">Listing</span><h2>' + esc(m.name) + ' for ' + what + '</h2></div>' +
         '<div class="ui-row"><a class="ui-btn sm" href="#atlas/model/' + m.slug + '" data-go="atlas/model/' + m.slug + '">' + UI.icon('book') + '<span>About ' + esc(m.short) + '</span></a>' +
         '<button type="button" class="ui-btn sm primary" data-save-snippet>' + UI.icon('save') + '<span>Save to notebook</span></button></div></div>' +
-        RI.codeBlock(files, st.file) +
-        '<p class="lb-run">$ pip install -r requirements.txt &nbsp;&amp;&amp;&nbsp; python train.py &nbsp;&amp;&amp;&nbsp; python predict.py' + (sp.task === 'forecast' ? '' : ' new.csv') + '</p>';
+        tuneNote + RI.codeBlock(files, st.file) +
+        '<p class="lb-run">$ pip install -r requirements.txt &nbsp;&amp;&amp;&nbsp; python train.py &nbsp;&amp;&amp;&nbsp; python predict.py' + (sp.task === 'forecast' || m.tmpl === 'anomts' ? '' : ' new.csv') + '</p>';
     }
 
     function compute() {
@@ -2600,6 +3327,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       else if (e.target.matches('[data-freq]')) { sp.freq = e.target.value; refresh([3]); }
       else if (e.target.matches('[data-intervals]')) { sp.intervals = e.target.checked; refresh([]); }
       else if (e.target.matches('[data-missing]')) { sp.missing = e.target.checked; refresh([]); }
+      else if (e.target.matches('[data-tune]')) { sp.tune = e.target.checked; refresh([]); }
       else if (e.target.matches('[data-load-ds]') && e.target.value) {
         var ds = datasets.filter(function (d) { return d.id === e.target.value; })[0];
         if (ds) {
@@ -2617,7 +3345,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
         st = blankState(); st.text = s.text; reparse();
         var sp = spec();
         sp.columns.forEach(function (c) { if (s.tweak) s.tweak(c); });
-        sp.task = s.task; sp.freq = s.freq || 'D'; sp.horizon = s.horizon || 14; sp.rows = s.rows || 'm'; sp.intervals = !!s.intervals;
+        sp.task = s.task; sp.freq = s.freq || 'D'; sp.horizon = s.horizon || 14; sp.rows = s.rows || 'm'; sp.intervals = !!s.intervals; sp.tune = false;
         sp.file = s.key + '.csv';
         drawAll(); return;
       }
@@ -2638,7 +3366,10 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       if (e.target.closest('[data-save-snippet]')) { saveSnippet(); return; }
       if (e.target.closest('[data-save-ds]')) { saveDataset(); return; }
     });
-    RI.wireCode(view, function () { return files || {}; }, function (k) { st.file = k; save(); drawS5(); });
+    RI.wireCode(view, function () { return files || {}; }, function (k) { st.file = k; save(); drawS5(); }, function () {
+      var m = RI.MODEL[st.pick], d = RI.derive(spec());
+      return { title: m.name + (d.target ? ' for ' + d.target : ''), model: st.pick, spec: spec() };
+    });
 
     // the priority simplex: click or drag
     var dragging = false;
@@ -2667,7 +3398,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
       if (!ctx.me) return needAccount('this listing');
       var m = RI.MODEL[st.pick], d = RI.derive(spec());
       var dlg = UI.modal('<h2>Save to your notebook</h2><p class="muted">The listing keeps its data description, so you can reopen it in the Lab later. Only column names, types and roles are stored, never your data.</p>' +
-        '<form class="ui-stack" data-sv><label class="ui-field"><span>Title</span><input type="text" name="title" maxlength="120" required value="' + esc(m.name + ' · ' + d.target) + '"></label>' +
+        '<form class="ui-stack" data-sv><label class="ui-field"><span>Title</span><input type="text" name="title" maxlength="120" required value="' + esc(m.name + ' · ' + (d.target || RI.TASK_SHORT[spec().task].toLowerCase())) + '"></label>' +
         '<label class="ui-field"><span>Notes <em>(optional)</em></span><textarea name="notes" maxlength="4000" placeholder="What this is for, what you changed, results…"></textarea></label>' +
         '<label class="ui-field"><span>Tags <em>(comma-separated, optional)</em></span><input type="text" name="tags" maxlength="200" placeholder="retail, daily"></label>' +
         '<label class="ui-check"><input type="checkbox" name="is_public"><span>Share it in the Commons (others see the title, notes, columns and code, with your name)</span></label>' +
@@ -2687,7 +3418,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     function saveDataset() {
       var cur = datasets && st.dataset ? datasets.filter(function (d) { return d.id === st.dataset; })[0] : null;
       var dlg = UI.modal('<h2>Save the data description</h2><p class="muted">Column names, types, roles and task settings. No values.</p>' +
-        '<form class="ui-stack" data-sd><label class="ui-field"><span>Name</span><input type="text" name="name" maxlength="80" required value="' + esc(cur ? cur.name : (RI.derive(spec()).target || 'My data') + ' data') + '"></label>' +
+        '<form class="ui-stack" data-sd><label class="ui-field"><span>Name</span><input type="text" name="name" maxlength="80" required value="' + esc(cur ? cur.name : (RI.derive(spec()).target || 'My') + ' data') + '"></label>' +
         (cur ? '<label class="ui-check"><input type="checkbox" name="overwrite" checked><span>Update “' + esc(cur.name) + '” (untick to save a new one)</span></label>' : '') +
         '<div class="ui-row end"><button type="button" class="ui-btn ghost" data-close>Cancel</button><button class="ui-btn primary" type="submit">Save</button></div></form>');
       var form = dlg.el.querySelector('[data-sd]');
@@ -2719,7 +3450,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
     title: 'Describe your data.<br><em>Get the model, and the Python.</em>',
     lead: 'Paste your table\u2019s header row and mark what matters: the target, the time column, the drivers you trust. RoboIntern ranks the machine-learning models that fit, explains the maths behind each one, and writes train.py and predict.py for you to run.',
     cta: 'Start in the Lab',
-    proof: ['30 models, from seasonal na\u00efve to Transformers', 'Leakage-aware forecasting code', 'Your data never leaves the browser'],
+    proof: [RI.MODELS.length + ' models, from seasonal na\u00efve to foundation models', 'Leakage-aware forecasting code', 'Your data never leaves the browser'],
     stepsTitle: 'How it works',
     stepsLead: 'No uploads, no notebooks to configure. Lists in, code out.',
     steps: [['Paste the header', 'A header row, or a few rows of your CSV or spreadsheet. Types and roles are guessed: date \u2192 time t, sales \u2192 target y.'],
@@ -2968,7 +3699,8 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
         (spec.task === 'forecast' ? '<p class="small muted" style="margin:10px 0 0">' + esc(RI.FREQ[spec.freq].name) + ', horizon ' + spec.horizon + ' ' + esc(RI.FREQ[spec.freq].unit) + '</p>' : '') + '</div>' +
         '<div class="ui-card"><h3 style="font-size:1.02rem">How to run it</h3><ol class="small" style="padding-left:1.2em;margin:0">' +
         '<li>Save the three files in one folder, next to <code>' + esc(spec.file) + '</code>.</li><li><code>pip install -r requirements.txt</code></li><li><code>python train.py</code></li>' +
-        '<li><code>python predict.py' + (spec.task === 'forecast' ? '' : ' new.csv') + '</code></li></ol></div></aside></div></div>';
+        '<li><code>python predict.py' + (spec.task === 'forecast' || m.tmpl === 'anomts' ? '' : ' new.csv') + '</code></li></ol>' +
+        '<p class="small muted" style="margin:10px 0 0">Prefer notebooks? The <b>.ipynb</b> button above packs all three files into one.</p></div></aside></div></div>';
     }
     function setFrom(snip) {
       s = snip;
@@ -3022,7 +3754,7 @@ df["sqm_vs_city"] = df["sqm"] / df["city"].map(means)` },
         ta.value = ta.value.slice(0, a) + '    ' + ta.value.slice(ta.selectionEnd); ta.selectionStart = ta.selectionEnd = a + 4;
       }
     });
-    RI.wireCode(view, function () { return files; }, function () {});
+    RI.wireCode(view, function () { return files; }, function () {}, function () { return { title: s.title, model: s.model, spec: s.spec, notes: s.notes }; });
     function editMeta() {
       var dlg = UI.modal('<h2>Edit details</h2><form class="ui-stack" data-meta><label class="ui-field"><span>Title</span><input type="text" name="title" maxlength="120" required value="' + esc(s.title) + '"></label>' +
         '<label class="ui-field"><span>Notes</span><textarea name="notes" maxlength="4000">' + esc(s.notes) + '</textarea></label>' +

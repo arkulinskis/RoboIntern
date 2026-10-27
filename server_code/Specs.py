@@ -2,7 +2,7 @@
 
 A spec never holds sample values: only column names, their types and roles, and the task settings.
     {"columns": [{"name", "type", "role", "key", "known"}], "task", "freq", "horizon", "rows",
-     "weights": {"acc", "interp", "speed"}, "intervals", "missing", "file"}
+     "weights": {"acc", "interp", "speed"}, "intervals", "missing", "tune", "file"}
 Kept in step with RI.cleanSpec in web/pages/_engine.html.
 """
 import re
@@ -11,7 +11,7 @@ from . import common as C
 
 TYPES = ("numeric", "categorical", "datetime", "boolean", "text", "id")
 ROLES = ("feature", "target", "time", "group", "ignore")
-TASKS = ("forecast", "regression", "binary", "multiclass")
+TASKS = ("forecast", "regression", "binary", "multiclass", "anomaly", "cluster")
 FREQS = ("H", "D", "W", "M", "Q", "Y")
 ROWS = ("xs", "s", "m", "l", "xl")
 FILES = ("train", "predict", "requirements")
@@ -52,7 +52,7 @@ def clean_spec(spec):
             "horizon": int(_num(spec.get("horizon"), 1, 1000, 14)),
             "rows": spec.get("rows") if spec.get("rows") in ROWS else "m",
             "weights": {k: round(_num(w.get(k), 0, 1, 1 / 3.0), 4) for k in ("acc", "interp", "speed")},
-            "intervals": bool(spec.get("intervals")), "missing": bool(spec.get("missing")),
+            "intervals": bool(spec.get("intervals")), "missing": bool(spec.get("missing")), "tune": bool(spec.get("tune")),
             "file": C.text(spec.get("file"), 120) or "data.csv"}
 
 

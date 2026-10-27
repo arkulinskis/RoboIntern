@@ -24,9 +24,10 @@ def _c(name, type_, role="feature", key=False, known=False):
     return {"name": name, "type": type_, "role": role, "key": key, "known": known}
 
 
-def _spec(cols, task, freq="D", horizon=14, rows="m", w=(0.5, 0.25, 0.25), intervals=False, missing=False, file="data.csv"):
+def _spec(cols, task, freq="D", horizon=14, rows="m", w=(0.5, 0.25, 0.25), intervals=False, missing=False, file="data.csv", tune=False):
     return {"columns": cols, "task": task, "freq": freq, "horizon": horizon, "rows": rows,
-            "weights": {"acc": w[0], "interp": w[1], "speed": w[2]}, "intervals": intervals, "missing": missing, "file": file}
+            "weights": {"acc": w[0], "interp": w[1], "speed": w[2]}, "intervals": intervals, "missing": missing,
+            "tune": tune, "file": file}
 
 
 BAKERY = _spec([_c("date", "datetime", "time"), _c("shop_id", "categorical", "group"),
@@ -56,9 +57,27 @@ SESSIONS = _spec([_c("date", "datetime", "time"), _c("campaign_spend", "numeric"
 SENSOR = _spec([_c("hours_since_calibration", "numeric", key=True), _c("ambient_temp", "numeric"),
                 _c("humidity", "numeric"), _c("drift_mv", "numeric", "target")],
                "regression", rows="xs", w=(0.4, 0.3, 0.3), intervals=True, file="sensor_drift.csv")
+FRAUD = _spec([_c("txn_id", "id", "ignore"), _c("amount_eur", "numeric", key=True), _c("merchant_category", "categorical"),
+               _c("country", "categorical"), _c("hour_of_day", "numeric"), _c("km_from_home", "numeric", key=True),
+               _c("card_present", "boolean"), _c("is_fraud", "boolean", "target")],
+              "anomaly", rows="l", w=(0.5, 0.25, 0.25), tune=True, file="transactions.csv")
+SEGMENTS = _spec([_c("customer_id", "id", "ignore"), _c("age", "numeric"), _c("annual_income_k", "numeric"),
+                  _c("visits_per_month", "numeric", key=True), _c("avg_basket_eur", "numeric", key=True),
+                  _c("channel", "categorical"), _c("loyalty_member", "boolean")],
+                 "cluster", rows="m", w=(0.3, 0.5, 0.2), file="customers.csv")
 
 # (author index, title, model, spec, notes, tags, cites, days ago)
 DEMO_SNIPPETS = [
+    (1, "Card fraud screening (isolation forest, tuned)", "iforest", FRAUD,
+     "Unsupervised scores for every transaction; the 1,200 confirmed fraud cases are only used to measure it and to "
+     "tune it with Optuna (average precision). The top 0.5% goes to the review queue each morning.",
+     ["anomaly", "fraud", "optuna"], 5, 2),
+    (3, "Customer segments with k-means", "kmeans", SEGMENTS,
+     "k chosen by silhouette (it picked 5). The profile table named itself: weekend families, app regulars, "
+     "big-basket monthly, students, lapsed.", ["clustering", "segmentation", "retail"], 6, 4),
+    (2, "Zero-shot hourly load with Chronos-2", "chronos", GRID,
+     "Benchmark before training anything: Chronos-2 with temperature as a known-ahead covariate, no training at all. "
+     "It landed within 4% of the LSTM's MASE.", ["energy", "foundation-model", "zero-shot"], 4, 1),
     (0, "Bakery loaves: 14-day forecast per shop", "lgbm", BAKERY,
      "One global LightGBM model across all 9 shops, with lags 1/7/14/28 and rolling means. Promo and holidays are "
      "planned ahead, so they enter as known-future features. Beat seasonal naive by ~31% MAE on the last 14 days.",

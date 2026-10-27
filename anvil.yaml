@@ -302,7 +302,7 @@ native_deps:
     \ any other icon link. */\n(function () {\n  function keep() {\n    var ours = document.getElementById('ui-favicon');\n\
     \    if (!ours) return;\n    document.querySelectorAll('link[rel~=\"icon\"]').forEach(function (l) { if (l !== ours) l.remove();\
     \ });\n  }\n  keep();\n  document.addEventListener('DOMContentLoaded', keep);\n  window.addEventListener('load', keep);\n\
-    })();\n</script>\n<link rel=\"stylesheet\" href=\"_/theme/app.css?v=0e16359b52\">\n<script src=\"_/theme/app.js?v=c288287379\"\
+    })();\n</script>\n<link rel=\"stylesheet\" href=\"_/theme/app.css?v=0e16359b52\">\n<script src=\"_/theme/app.js?v=b268d955ff\"\
     ></script>\n"
 package_name: RoboIntern
 runtime_options:
