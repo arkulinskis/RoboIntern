@@ -25,6 +25,19 @@ lookup dictionary with a code writer. Built on [Anvil](https://anvil.works).
   for each model its definition, objective (KaTeX), intuition, when to use it, assumptions, complexity, hyperparameters,
   strengths and weaknesses, profile, related models and a live example listing. Plus 18 feature-development recipes,
   9 validation schemes (with fold diagrams, including cross-validated tuning), 17 metrics, a sortable comparison table, and search.
+- **The Casebook** (`#cases`): 105 business situations in 10 industries (manufacturing, energy & utilities, retail,
+  transport & logistics, healthcare, banking, insurance, telecom, agriculture & food, travel & hospitality). Figure 2
+  crosses the industries with the 11 shapes every case reduces to (demand & stock, load & flow, event risk, propensity,
+  quality & yield, value & cost, time & duration, triage, outliers & fraud, metric watch, segmentation); click a cell,
+  an industry or a shape, or search ("safety stock", "weather"). Each case page: the question, the dataset in set
+  notation, §1 the history columns teams already have, §2 **signals beyond history** (e.g. the signed-contract
+  pipeline for safety stock, weather forecasts for electricity use) with where to get them and why they help, tick
+  them on or off, §3 the models best first with the reason for each, §4 the decision rule (with its formula),
+  a caution, §5 feature recipes, validation and metrics (Atlas links), §6 the live code for the picked model with the
+  ticked signals, and **Open in the Lab**. It says when the picked model can't read a signal (ETS, STL, seasonal
+  naïve). "Same shape, other industries" links show the same maths in other columns. "Outside this book" lists what
+  isn't prediction from a table (vision, language, optimisation, RL, causal questions). Atlas model pages list the
+  cases that use them (`#cases/model/<slug>`).
 - **The Commons** (`#commons`): listings members shared. Search, filter by task and model, sort by newest or most cited.
 - Landing page, sign-up, feedback form, Privacy & Terms.
 
@@ -78,6 +91,7 @@ See `.claude/skills/robointern/SKILL.md`. In short:
 ```
 python -I tools/check.py --ui                    # syntax, server tests, headless UI tests → ALL CHECKS PASSED
 python -I tools/preview/devserver.py 8765        # the app on in-memory data: http://localhost:8765/  (?as=ana#notebook, ?as=admin#admin)
+node tools/testing/codegen/cases.js OUT all      # every Casebook case × listed model (run.py runs them too)
 node tools/testing/codegen/gen.js OUT            # every model × task listing; then run them with a Python that has the ML libraries:
 python tools/testing/codegen/run.py OUT
 python tools/deploy.py                           # dry run (needs PyYAML, so no -I)
@@ -88,8 +102,10 @@ python tools/deploy.py --push "Message"          # deploy: commit + push to GitH
 
 ```
 web/pages/_atlas_data.html   the Atlas content: RI.MODELS, FEATURES, VALIDATION, METRICS, FAMILIES
+web/pages/_cases_data.html   the Casebook content: RI.INDUSTRIES, SHAPES, CASES (+ caseSpec, casesFor)
 web/pages/_engine.html       parser, recommender, code generator, highlighter, KaTeX helpers (window.RI)
-web/pages/*.html             lab, atlas, notebook, snippet, commons, landing, auth, profile, admin
+web/pages/*.html             lab, cases, atlas, notebook, snippet, commons, landing, auth, profile, admin
 server_code/                 Specs.py (spec cleaning), Notebook.py, Commons.py, DemoData.py + the template modules
-tools/testing/codegen/       gen.js + run.py: generate and execute every listing
+tools/testing/codegen/       gen.js + run.py: generate and execute every listing; cases.js checks every Casebook case
+                             (check.py runs it) and writes its listings for run.py
 ```

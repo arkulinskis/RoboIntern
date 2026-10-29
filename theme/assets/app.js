@@ -437,6 +437,7 @@
         '<div class="ui-footer-links">' +
         '<a href="#landing" data-go="landing">About</a>' +
         '<a href="#atlas" data-go="atlas">Atlas</a>' +
+        '<a href="#cases" data-go="cases">Casebook</a>' +
         '<a href="#lab" data-go="lab">Lab</a>' +
         '<a href="#commons" data-go="commons">Commons</a>' +
         '<button type="button" data-feedback>Send feedback</button>' +
@@ -446,7 +447,7 @@
     tabbar: function (me, active) {
       var nav = UI.navPages();
       if (!me || nav.length < 2) return '';
-      return nav.slice(0, 4).map(function (p) {
+      return nav.slice(0, 5).map(function (p) {
         return '<a href="#' + p.name + '" class="' + (p.name === active ? 'on' : '') + '">' + UI.icon(p.icon) + '<span>' + esc(p.nav) + '</span></a>';
       }).join('') + '<a href="#profile" class="' + (active === 'profile' ? 'on' : '') + '">' + UI.icon('user') + '<span>You</span></a>';
     },
@@ -1097,6 +1098,1340 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     { slug: 'logloss', name: 'Log loss', long: 'Cross-entropy', kind: 'classification', eq: T`\mathcal L = -\frac1n\sum_i\sum_k y_{ik}\log \hat p_{ik}`, text: 'Scores the probabilities themselves, and punishes confident mistakes hard. A proper scoring rule.', code: T`log_loss(y, proba)` },
     { slug: 'brier', name: 'Brier score', long: 'Brier score', kind: 'classification', eq: T`\text{BS} = \frac1n\sum_i (\hat p_i - y_i)^2`, text: 'Mean squared error of probabilities. Splits into calibration and refinement.', code: T`brier_score_loss(y, proba)` }
   ];
+})();
+
+/* ===== _cases_data.html ===== */
+(function () {
+  'use strict';
+  var RI = window.RI = window.RI || {};
+  var T = String.raw;
+
+  var IC = (window.UI && UI.ICONS) || {};
+  IC.cases = '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H9l2 2h7.5A1.5 1.5 0 0 1 20 7.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z"/><path d="M8 11h8M8 14.5h5"/>';
+  IC.factory = '<path d="M3 21V10.5l5 3v-3l5 3v-3l5 3V4h3v17z"/><path d="M7 17.5h2M11.5 17.5h2M16 17.5h2"/>';
+  IC.bolt = '<path d="M13 2.5 4.5 14H11l-1 7.5L19.5 10H13z"/>';
+  IC.cart = '<path d="M3 4h2l2.3 10.6a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.5-1.2L20.5 8H6.1"/><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>';
+  IC.truck = '<path d="M2.5 6h11v10h-11zM13.5 9.5h4l3 3.5V16h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>';
+  IC.pulse = '<path d="M3 12h4l2.2-5.5L13 18l2.3-6H21"/>';
+  IC.bank = '<path d="M3 9.5 12 4l9 5.5M4 20.5h16M6 10.5v7M10 10.5v7M14 10.5v7M18 10.5v7"/>';
+  IC.umbrella = '<path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6a2 2 0 0 1-4 0"/>';
+  IC.antenna = '<path d="M12 10.5V21M8.5 21h7"/><circle cx="12" cy="8.5" r="1.8"/><path d="M8.3 4.8a5.3 5.3 0 0 0 0 7.4M15.7 4.8a5.3 5.3 0 0 1 0 7.4M5.6 2.5a8.6 8.6 0 0 0 0 12M18.4 2.5a8.6 8.6 0 0 1 0 12"/>';
+  IC.sprout = '<path d="M12 21v-9"/><path d="M12 12C12 8 9.5 5.5 5 5.5 5 9.5 7.5 12 12 12zM12 14.5c0-3.5 2.3-6 6.5-6 0 3.8-2.4 6-6.5 6z"/>';
+  IC.suitcase = '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4.5h6V7M8 7v13M16 7v13"/>';
+
+  RI.INDUSTRIES = [
+    { key: 'mfg', letter: 'M', name: 'Manufacturing', icon: 'factory', blurb: 'Plants, lines and the supply chain around them: stock, machines, quality, energy and cost.' },
+    { key: 'energy', letter: 'E', name: 'Energy & utilities', icon: 'bolt', blurb: 'Grids, generation, water networks and the customers who use them.' },
+    { key: 'retail', letter: 'R', name: 'Retail & e-commerce', icon: 'cart', blurb: 'Stores, websites and the customers who move between them.' },
+    { key: 'logistics', letter: 'L', name: 'Transport & logistics', icon: 'truck', blurb: 'Parcels, fleets, warehouses and the clock they all run against.' },
+    { key: 'health', letter: 'H', name: 'Healthcare', icon: 'pulse', blurb: 'Hospitals and clinics: patients, beds, staff and supplies. High stakes, so explanations matter.' },
+    { key: 'banking', letter: 'B', name: 'Banking & payments', icon: 'bank', blurb: 'Credit, fraud, cash and customers. Regulated: models must be explainable and fair.' },
+    { key: 'insurance', letter: 'I', name: 'Insurance', icon: 'umbrella', blurb: 'Pricing risk, handling claims and keeping policyholders.' },
+    { key: 'telco', letter: 'C', name: 'Telecom & subscriptions', icon: 'antenna', blurb: 'Networks and subscribers: traffic, faults, churn and support.' },
+    { key: 'agri', letter: 'A', name: 'Agriculture & food', icon: 'sprout', blurb: 'Fields, herds and the food chain, where the weather is always a driver.' },
+    { key: 'travel', letter: 'T', name: 'Travel & hospitality', icon: 'suitcase', blurb: 'Hotels, airlines and restaurants: perishable capacity sold in advance.' }
+  ];
+  RI.INDUSTRY = {};
+  RI.INDUSTRIES.forEach(function (x) { RI.INDUSTRY[x.key] = x; });
+
+  /* The shapes: every case is one of these. Defaults for the cases that don't say otherwise. */
+  RI.SHAPES = {
+    demand: { name: 'Demand & stock', task: 'forecast', blurb: 'How much will be needed, per item and period, and how much buffer to hold?',
+      feats: ['lags', 'rolling', 'calendar', 'known', 'events'], val: 'rolling-origin', metrics: ['mase', 'pinball', 'coverage'], rows: 'm', intervals: true },
+    load: { name: 'Load & flow', task: 'forecast', blurb: 'How much will flow through per hour or day: energy, arrivals, calls, traffic, cash?',
+      feats: ['lags', 'calendar', 'cyclic', 'known', 'events'], val: 'rolling-origin', metrics: ['mase', 'mape', 'pinball'], rows: 'm', intervals: true },
+    risk: { name: 'Event risk', task: 'binary', blurb: 'Will this asset, account, order or patient hit a bad event within a window?',
+      feats: ['rolling', 'group-agg', 'missing'], val: 'expanding', metrics: ['prauc', 'auc', 'brier'], rows: 'm' },
+    propensity: { name: 'Propensity', task: 'binary', blurb: 'Will this person do something: leave, buy, respond, not show up?',
+      feats: ['target-enc', 'freq-enc', 'missing'], val: 'stratified', metrics: ['auc', 'logloss', 'brier'], rows: 'm' },
+    quality: { name: 'Quality & yield', task: 'regression', blurb: 'How good will the output be, given the inputs and the settings?',
+      feats: ['interactions', 'scaling', 'missing'], val: 'kfold', metrics: ['mae', 'r2'], rows: 's' },
+    value: { name: 'Value & cost', task: 'regression', blurb: 'What is it worth, or what will it cost: a price, a claim, a customer?',
+      feats: ['log', 'target-enc', 'onehot'], val: 'kfold', metrics: ['mae', 'rmse', 'r2'], rows: 's' },
+    duration: { name: 'Time & duration', task: 'regression', blurb: 'How long until it arrives, ends, fails or is ready?',
+      feats: ['log', 'calendar', 'group-agg'], val: 'expanding', metrics: ['mae', 'pinball', 'coverage'], rows: 'm' },
+    triage: { name: 'Triage & routing', task: 'multiclass', blurb: 'Which category, cause or team does this case belong to?',
+      feats: ['tfidf', 'onehot', 'freq-enc'], val: 'stratified', metrics: ['f1', 'accuracy', 'logloss'], rows: 's' },
+    outlier: { name: 'Outliers & fraud', task: 'anomaly', blurb: 'Which rows look unlike all the others: fraud, faults, errors?',
+      feats: ['scaling', 'group-agg', 'log'], val: 'holdout', metrics: ['precision-k', 'prauc'], rows: 'm' },
+    watch: { name: 'Metric watch', task: 'anomaly', blurb: 'Is a series doing something it normally wouldn\'t at this time of day, week or year?',
+      feats: ['calendar', 'rolling'], val: 'expanding', metrics: ['precision-k'], rows: 'm' },
+    segment: { name: 'Segmentation', task: 'cluster', blurb: 'Which natural groups exist, so each one gets its own treatment?',
+      feats: ['scaling', 'log'], val: null, metrics: ['silhouette', 'davies-bouldin'], rows: 's' }
+  };
+  RI.SHAPE_ORDER = ['demand', 'load', 'risk', 'propensity', 'quality', 'value', 'duration', 'triage', 'outlier', 'watch', 'segment'];
+
+  /* What prediction can't do on its own: shown on the Casebook so the list is honest about its edges. */
+  RI.CASE_LIMITS = [
+    ['Seeing', 'Defects in photos, crop health from drones, damage from claim pictures: computer vision. Its output (a defect score) can become a column here.'],
+    ['Reading and writing', 'Summarising notes, drafting replies, extracting fields from documents: language models. Short text as a feature (TF-IDF) is covered.'],
+    ['Deciding under constraints', 'Schedules, routes, shift rosters and production plans: optimisation. It consumes the forecasts in this book as inputs.'],
+    ['Acting and learning', 'Control loops, robots and pricing that experiments as it goes: reinforcement learning and bandits.'],
+    ['Cause and effect', '"What happens if we change the price?" needs experiments or causal inference. A model trained on history predicts; it doesn\'t prove why.']
+  ];
+
+  RI.CASES = [
+    /* ================================================================ M  Manufacturing */
+    { id: 'safety-stock', ind: 'mfg', shape: 'demand', name: 'Safety stock for spare parts', freq: 'W', h: 13, rows: 'm',
+      q: 'How many of each part will we use during the next replenishment lead time, and how sure can we be?',
+      cols: ['week|t', 'part_id|g', 'plant|c', 'qty_used|y', 'machines_running|n*', 'planned_maintenance_h|n+*'],
+      sig: [['contract_pipeline_qty|n+*', 'Signed and late-stage contracts', 'CRM / sales pipeline', 'Deals weighted by their win probability and exploded through the bill of materials into part quantities. It sees demand weeks before it shows up in usage, so the stock is driven by what was sold, not only by what was used.'],
+            ['planned_output|n+', 'Production schedule', 'MPS / MRP', 'Planned units per week. Wear parts scale with output, and the plan is known ahead for the whole horizon.'],
+            ['installed_base|n', 'Installed base and its age', 'Asset register / service contracts', 'How many machines in the field use this part, and how old they are. Slow-moving, but it explains the trend.'],
+            ['supplier_lead_time_d|n', 'Supplier lead time', 'ERP purchase orders', 'The window the safety stock has to cover. A lead time that varies needs more stock: forecast it too (case M.9).']],
+      models: [['qgbm', 'Forecasts the median and the 95th percentile of usage directly: the gap between them is the safety stock.'],
+               ['lgbm', 'One global model across every part, so slow parts borrow the seasonality of busy ones.'],
+               ['ets', 'Per-part exponential smoothing with seasonality: a strong, explainable baseline on long, steady histories.'],
+               ['glm', 'Poisson regression for intermittent parts that sit at zero most weeks.'],
+               ['naive', 'The benchmark to beat: the same week last year.']],
+      feats: ['lags', 'rolling', 'fourier', 'known', 'events'],
+      act: 'Forecast the total usage over the lead time L. Stock to its upper quantile: the gap to the median is the safety stock, and the reorder point is the median plus that gap.',
+      tex: T`\mathrm{SS} = \hat q_{0.95}\Big(\textstyle\sum_{k=1}^{L} y_{T+k}\Big) - \hat q_{0.5}\Big(\textstyle\sum_{k=1}^{L} y_{T+k}\Big),\qquad \mathrm{ROP} = \hat q_{0.5} + \mathrm{SS}`,
+      watch: 'The textbook formula SS = zσ√L assumes steady, normal demand; seasonal and intermittent parts break it, which is why the quantiles come from the model. Weekly quantiles don\'t add up: forecast the lead-time total, or simulate paths.' },
+
+    { id: 'demand-plan', ind: 'mfg', shape: 'demand', name: 'Finished-goods demand for S&OP', freq: 'M', h: 12, rows: 's',
+      q: 'How many units of each product will customers order per month over the next year?',
+      cols: ['month|t', 'sku|g', 'product_family|c', 'region|c', 'units_ordered|y', 'list_price|n+', 'promo_month|b+*'],
+      sig: [['open_order_book|n+*', 'Order book and backlog', 'ERP sales orders', 'Orders already confirmed for future months: the strongest short-range signal. It fades with the horizon, and the model learns how fast.'],
+            ['customer_forecast|n+', 'Customers\' own forecasts', 'EDI / VMI feeds', 'What key accounts say they will order. Biased, but consistently so, and the model learns each bias.'],
+            ['pmi_index|n', 'Industry activity index', 'PMI / industrial production', 'A leading macro indicator for B2B demand. Past-only, so the code lags it by the horizon.'],
+            ['channel_inventory|n', 'Distributor stock', 'Sell-through reports', 'Orders drop when distributors are overstocked, even while end demand holds.']],
+      models: [['lgbm', 'A global model across SKUs, families and regions with lags, seasonality and the known-ahead drivers.'],
+               ['tft', 'Multi-horizon quantiles that use prices and promotions known ahead; worth it with hundreds of SKUs.'],
+               ['chronos', 'Zero-shot forecasts for new or short-history SKUs, no training.'],
+               ['ets', 'The per-SKU baseline planners already trust.']],
+      act: 'The median feeds the master production schedule; the upper quantile sizes capacity and buffer stock. Track the bias every month and re-plan when the tracking signal leaves ±4.',
+      tex: T`\mathrm{TS}_T = \frac{\sum_{t\le T}(y_t - \hat y_t)}{\mathrm{MAD}_T}`,
+      watch: 'Shipments are not demand: when stock runs out, the lost orders never appear in the data. Forecast orders, and flag months with shortages.' },
+
+    { id: 'machine-failure', ind: 'mfg', shape: 'risk', name: 'Machine failure in the next 7 days', rows: 'm',
+      q: 'Which machines are likely to fail in the coming week, so maintenance can get there first?',
+      cols: ['snapshot_date|t', 'machine_id|i', 'machine_type|c', 'age_days|n', 'vibration_rms_7d|n*', 'temp_max_7d|n*', 'current_mean_7d|n', 'hours_since_service|n*', 'alarms_7d|n', 'fails_next_7d|Y'],
+      sig: [['last_work_order|x', 'Maintenance logs', 'CMMS work orders', 'The text of recent repairs ("bearing noise", "seal leaking"). TF-IDF turns it into features; repeat complaints are strong predictors.'],
+            ['load_pct|n*', 'Duty cycle', 'MES / PLC', 'How hard the machine is being run. Wear follows load, not the calendar.'],
+            ['ambient_temp_c|n', 'Ambient temperature and humidity', 'Building sensors or a weather API', 'Heat and damp speed up wear on motors, electronics and seals.'],
+            ['product_family|c', 'What it was running', 'Production orders', 'Some products are abrasive or need tighter tolerances.']],
+      models: [['lgbm', 'Handles skewed sensor aggregates and their interactions; class weights take care of the rare failures.'],
+               ['rf', 'Robust out of the box, hard to overfit, with permutation importance per sensor.'],
+               ['catboost', 'When machine type, line and product are categories with many levels.'],
+               ['logreg', 'The explainable baseline: each sensor gets an odds ratio engineers can check.']],
+      act: 'Send a technician when the expected cost of a failure is larger than the cost of the visit. Two numbers maintenance already knows give the probability threshold.',
+      tex: T`\text{visit if } \hat p\,C_{\text{fail}} > C_{\text{visit}} \iff \hat p > p^* = \frac{C_{\text{visit}}}{C_{\text{fail}}}`,
+      metrics: ['prauc', 'precision-k', 'brier'],
+      watch: 'Build every feature from data before the snapshot date, and split by time (train on earlier months). Failures are rare: judge with PR AUC and precision at the number of visits the crew can actually make.' },
+
+    { id: 'remaining-life', ind: 'mfg', shape: 'duration', name: 'Remaining useful life of a component', rows: 's',
+      q: 'How many more operating cycles until this component has to be replaced?',
+      cols: ['unit_id|i', 'component|c', 'cycles_run|n*', 'pressure_mean|n', 'temp_mean|n*', 'vibration_trend|n*', 'op_mode|c', 'rul_cycles|y'],
+      sig: [['load_regime|c', 'Operating regime', 'Control system', 'The same number of cycles under heavy load wears faster; the regime explains much of the spread between units.'],
+            ['oil_particles_ppm|n*', 'Oil analysis', 'Lab reports', 'Metal particles in the lubricant rise before a mechanical failure.'],
+            ['ambient_temp_c|n', 'Environment', 'Site sensors / weather', 'Heat and dust shorten life.']],
+      models: [['qgbm', 'A low quantile of the remaining life (P10) is what you plan on; the median is what you report.'],
+               ['lgbm', 'The point estimate, with degradation trends as features.'],
+               ['rf', 'Stable with a few hundred units.'],
+               ['gp', 'Small fleets: smooth degradation curves with honest uncertainty.']],
+      act: 'Order the replacement when the 10th percentile of the remaining life drops below the part\'s lead time plus a margin for scheduling the job.',
+      tex: T`\text{order when } \hat q_{0.1}(\mathrm{RUL}) \le L_{\text{part}} + \Delta`,
+      val: 'group',
+      watch: 'Units still running have no known end of life (censoring). Train on units that failed or were replaced for wear, or move to survival models; and validate by unit (group k-fold), never by random rows.' },
+
+    { id: 'sensor-watch', ind: 'mfg', shape: 'watch', name: 'Sensor drift and process anomalies', freq: 'H', rows: 'm',
+      q: 'Is any sensor on the line reading something it normally wouldn\'t at this hour?',
+      cols: ['timestamp|t', 'sensor_id|g', 'reading|y'],
+      sig: [['line_running|b', 'Line state', 'MES / PLC', 'A pressure of zero is normal while the line is stopped. Without the state, every stop raises an alarm.'],
+            ['ambient_temp_c|n', 'Ambient temperature', 'Building sensors', 'Separates drift caused by the room from drift in the sensor.'],
+            ['calibrated|b', 'Calibration events', 'Maintenance log', 'A level shift right after a calibration is expected, not a fault.']],
+      models: [['stl', 'Per sensor: removes the daily and weekly pattern and scores what is left with a robust z-score.'],
+               ['iforest', 'Scores whole rows, using the context columns (line state, temperature) as well.'],
+               ['robustcov', 'When several sensors move together: flags readings that break their usual relationship.']],
+      act: 'Alert when the robust z-score stays beyond a threshold for k readings in a row. One spike is noise; a run is a fault.',
+      tex: T`z_t = \frac{r_t - \operatorname{median}(r)}{1.4826\,\operatorname{MAD}(r)},\qquad \text{alert if } |z_{t-k+1}|, \dots, |z_t| > 3.5`,
+      watch: 'Agree the alert budget with the operators first (how many alerts per shift they will really look at), then set the threshold to stay within it.' },
+
+    { id: 'end-of-line', ind: 'mfg', shape: 'quality', task: 'binary', name: 'Defective units at end-of-line test', rows: 'm',
+      q: 'Which units are likely to fail final inspection, given how they were made?',
+      cols: ['produced_at|t', 'serial_no|i', 'line|c', 'shift|c', 'supplier_lot|c*', 'torque_nm|n*', 'cure_temp_c|n*', 'cycle_time_s|n', 'humidity_pct|n', 'defect|Y'],
+      sig: [['material_viscosity|n', 'Incoming material certificates', 'Supplier certificates of analysis', 'Material properties per lot; many defects start at the supplier.'],
+            ['tool_age_cycles|n*', 'Tool wear', 'Tool management system', 'Cycles since the last tool or die change.'],
+            ['operator_tenure_m|n', 'Operator experience', 'Shift plan', 'New operators on a station raise defect rates: useful for training plans, not for blame.']],
+      models: [['catboost', 'Lots, lines and shifts are categories with many levels; CatBoost encodes them without leaking the label.'],
+               ['lgbm', 'Fast on millions of units, with interactions between settings.'],
+               ['tree', 'A shallow tree gives engineers rules they can act on: "torque below 4.1 and lot from supplier B".'],
+               ['logreg', 'The readable baseline.']],
+      act: 'Send units above a probability threshold to full inspection. Choose the threshold for the catch rate you need, then read off how many units it sends to inspection.',
+      tex: T`t^* = \max\{t : \mathrm{Recall}(t) \ge 0.95\},\qquad \text{inspected share} = P(\hat p \ge t^*)`,
+      val: 'expanding', metrics: ['prauc', 'f1', 'brier'],
+      watch: 'Visual defects in images need computer vision, outside this book. Process data predicts the risk; a camera confirms it.' },
+
+    { id: 'batch-yield', ind: 'mfg', shape: 'quality', name: 'Batch yield and the best settings', rows: 'xs',
+      q: 'What yield will this batch give at these settings, and which settings would raise it?',
+      cols: ['batch_id|i', 'product|c', 'reactor|c', 'raw_purity_pct|n*', 'temp_mean_c|n*', 'hold_time_min|n*', 'ph|n', 'agitation_rpm|n', 'yield_pct|y'],
+      sig: [['ambient_humidity|n', 'Ambient humidity', 'Plant sensors', 'Hygroscopic materials and drying steps react to the weather.'],
+            ['upstream_yield|n', 'Upstream batch quality', 'Batch genealogy (MES)', 'The yield of the batches that fed this one.'],
+            ['catalyst_age_h|n*', 'Catalyst or media age', 'Process log', 'Activity decays with use.']],
+      models: [['gp', 'Few, expensive batches: a smooth response surface with uncertainty, ready for Bayesian optimisation.'],
+               ['bayesridge', 'A linear response with error bars, when the chemistry is roughly linear in the range you run.'],
+               ['rf', 'Captures thresholds and interactions once there are a few hundred batches.'],
+               ['lgbm', 'For thousands of batches.']],
+      act: 'Pick the next settings where the expected improvement over the best batch so far is largest, run that batch, add it to the data and repeat. Ten to twenty runs usually find the optimum.',
+      tex: T`\mathbf x_{\text{next}} = \arg\max_{\mathbf x}\ \mathbb E\big[\max\big(0,\ f(\mathbf x) - y^{\text{best}}\big)\big]`,
+      metrics: ['mae', 'r2', 'coverage'],
+      watch: 'Operators move settings together, so history can\'t separate their effects. A few designed experiments fix that faster than more history.' },
+
+    { id: 'plant-energy', ind: 'mfg', shape: 'load', name: 'Plant electricity use, hour by hour', freq: 'H', h: 48, rows: 'm',
+      q: 'How much electricity will each plant draw per hour over the next two days?',
+      cols: ['timestamp|t', 'plant|g', 'kwh|y', 'planned_output|n+*', 'shift_on|b+'],
+      sig: [['temp_fcst_c|n+*', 'Weather forecast', 'Weather API (keep the archived forecasts)', 'Heating, cooling and compressed air all follow the temperature. Train on archived forecasts, not actuals, so training sees what you will have at prediction time.'],
+            ['cloud_cover_fcst|n+', 'Sunshine and cloud cover', 'Weather API', 'Drives HVAC load, lighting and the output of on-site solar.'],
+            ['price_eur_mwh|n+', 'Day-ahead electricity price', 'Power exchange', 'Plants that move flexible loads to cheap hours make price a driver of their own use.'],
+            ['shutdown|b+', 'Planned shutdowns and holidays', 'Maintenance plan / HR calendar', 'Base load only on those days; without the flag every holiday looks like a collapse.']],
+      models: [['lgbm', 'Hourly lags and calendar, plus the weather and the production plan as known-ahead drivers.'],
+               ['tft', 'Multi-horizon quantiles that read the known-ahead weather and schedule directly.'],
+               ['prophet', 'Daily and weekly seasonality with temperature as a regressor; quick to explain.'],
+               ['naive', 'Same hour last week.']],
+      act: 'Buy the forecast energy day-ahead, and keep the peak under the contracted demand: move flexible loads (charging, compressors, ovens) out of the hours where the upper quantile crosses the cap.',
+      tex: T`\text{cost} = \sum_h p_h\,\hat y_h + c_{\text{peak}}\,\max_h \hat q_{0.9,h}`,
+      watch: 'Training on actual weather and predicting with forecasts makes the model look better in testing than it will be live. Keep the archived forecasts.' },
+
+    { id: 'lead-time', ind: 'mfg', shape: 'duration', name: 'Supplier lead time', rows: 's',
+      q: 'When will this purchase order actually arrive, given the supplier, the part and the season?',
+      cols: ['po_date|t', 'po_id|i', 'supplier|c*', 'part_family|c', 'qty|n', 'quoted_days|n*', 'origin_country|c', 'ship_mode|c', 'actual_days|y'],
+      sig: [['port_congestion|n*', 'Port congestion', 'Shipping data providers', 'Ships waiting at the port of loading predict delays weeks ahead.'],
+            ['supplier_backlog|n', 'Supplier capacity', 'Supplier portal / scorecards', 'A supplier running at full capacity slips.'],
+            ['holiday_days_in_transit|n', 'Holidays in the transit window', 'Country calendars', 'Lunar New Year, Golden Week and summer shutdowns add weeks.']],
+      models: [['qgbm', 'P50 and P90 lead times: plan critical parts on P90.'],
+               ['catboost', 'Supplier and part are high-cardinality categories.'],
+               ['lgbm', 'The fast point estimate.'],
+               ['linreg', 'Readable: days of delay per day quoted, per supplier.']],
+      act: 'Release the order early enough for the 90th percentile. For safety stock, feed the whole lead-time distribution into the stock calculation (case M.1).',
+      tex: T`d_{\text{release}} = d_{\text{need}} - \hat q_{0.9}(\text{lead time})`,
+      watch: 'Quoted dates get revised. Use the quote as it was when the order was placed, not the latest one, or the model learns from the future.' },
+
+    { id: 'late-orders', ind: 'mfg', shape: 'risk', name: 'Customer orders at risk of shipping late', rows: 'm',
+      q: 'Which open orders will miss their promised ship date?',
+      cols: ['order_date|t', 'order_id|i', 'product_family|c', 'qty|n', 'days_to_promise|n*', 'line_load_pct|n*', 'materials_ready|b*', 'customer_tier|c', 'late|Y'],
+      sig: [['wip_queue_h|n*', 'Work in progress', 'MES', 'Queue hours in front of this order right now.'],
+            ['inbound_delay_d|n', 'Inbound component delays', 'Advance shipping notices', 'Missing components are the most common reason an order slips.'],
+            ['engineering_changes|n', 'Engineering changes', 'PLM', 'Changes after the order was taken cause rework.']],
+      models: [['lgbm', 'Interactions between load, materials and lead time.'],
+               ['logreg', 'Readable odds per driver for the planners.'],
+               ['catboost', 'Many product families and customers.']],
+      act: 'Expedite or re-promise the orders with the highest risk times value, before the customer asks.',
+      tex: T`\text{priority}_i = \hat p_i \times \text{value}_i`,
+      watch: 'Score orders with what was known on the order date; "materials ready" filled in later leaks the answer.' },
+
+    { id: 'should-cost', ind: 'mfg', shape: 'value', name: 'Should-cost of a new part', rows: 's',
+      q: 'What should this new part cost to make, before engineering spends a day costing it?',
+      cols: ['rfq_id|i', 'material|c*', 'weight_kg|n*', 'n_operations|n*', 'tolerance_mm|n', 'surface_finish|c', 'batch_size|n', 'unit_cost|y'],
+      sig: [['material_index|n', 'Commodity price index', 'LME / steel and resin indices', 'Material is often half the cost; index it to the quote date.'],
+            ['cad_volume_cm3|n*', 'CAD geometry', 'CAD exports', 'Volume, surface area and bounding box from the 3D model.'],
+            ['machine_rate_h|n', 'Machine hourly rates', 'Cost accounting', 'Where the part is made changes its cost.']],
+      models: [['catboost', 'Materials and finishes as categories, with small data.'],
+               ['ridge', 'A log-linear cost model (% per kg, % per operation) buyers can defend.'],
+               ['knn', 'Shows the most similar past parts as evidence for the estimate.'],
+               ['lgbm', 'When there are thousands of costed parts.']],
+      act: 'Quote at the predicted cost plus margin, and flag supplier quotes outside the 10th–90th percentile: too good to be true, or room to negotiate.',
+      tex: T`\text{price} = \hat y\,(1+m),\qquad \text{flag if } \text{quote} \notin [\hat q_{0.1},\ \hat q_{0.9}]`,
+      feats: ['log', 'onehot', 'interactions'], metrics: ['mape', 'mae', 'r2'] },
+
+    { id: 'supplier-segments', ind: 'mfg', shape: 'segment', name: 'Supplier segmentation', rows: 'xs',
+      q: 'Which suppliers behave alike, so each group gets the right sourcing strategy?',
+      cols: ['supplier_id|i', 'annual_spend_k|n*', 'on_time_pct|n*', 'defect_ppm|n*', 'lead_time_cv|n', 'n_parts|n', 'single_source|b', 'country|c'],
+      sig: [['financial_risk|n', 'Financial health score', 'Credit agencies', 'Separates reliable-but-fragile suppliers from safe ones.'],
+            ['esg_score|n', 'ESG rating', 'Sustainability ratings', 'Required by many sourcing policies.']],
+      models: [['kmeans', 'Simple, fast, and the centroids read as profiles.'],
+               ['gmm', 'Soft membership: a supplier can be 70% "strategic".'],
+               ['agglo', 'A dendrogram buyers can cut at the level they like.']],
+      act: 'Name each cluster by its profile ("strategic: high spend, single source"), then give each a playbook: dual-source, long-term contract, or tender.',
+      watch: 'Clusters are descriptions, not facts. Re-run with another seed and a different k; build policy only on groups that stay.' },
+
+    { id: 'scrap-cause', ind: 'mfg', shape: 'triage', name: 'Root cause of a scrap event', rows: 's',
+      q: 'Given the process data and the operator\'s note, which cause is it most likely to be?',
+      cols: ['event_id|i', 'line|c', 'product|c', 'shift|c', 'temp_c|n', 'pressure_bar|n', 'operator_note|x*', 'cause|L'],
+      sig: [['material_lot|c', 'Material lot', 'ERP / traceability', 'Lets the model point at a supplier batch.'],
+            ['days_since_maintenance|n', 'Days since maintenance', 'CMMS', 'Separates machine causes from material causes.']],
+      models: [['logreg', 'TF-IDF of the note plus process values; fast, and readable word by word.'],
+               ['lgbm', 'Mixes text features with process values and their interactions.'],
+               ['nb', 'Strong on short notes with little data.']],
+      act: 'Route the event to the team that owns the top cause, and show the top three with their probabilities so a person can overrule it.' },
+
+    { id: 'spc-outliers', ind: 'mfg', shape: 'outlier', name: 'Multivariate process outliers (SPC)', rows: 'm',
+      q: 'Is this batch unusual as a whole, even if every single value is inside its control limits?',
+      cols: ['batch_id|i', 'temp_c|n*', 'pressure_bar|n*', 'flow_lpm|n', 'ph|n', 'viscosity|n', 'out_of_spec|Y'],
+      sig: [['raw_lot_purity|n', 'Incoming material', 'Supplier certificates', 'Unusual inputs explain unusual batches.'],
+            ['ambient_temp_c|n', 'Ambient conditions', 'Plant sensors', 'Separates seasonal shifts from faults.']],
+      models: [['robustcov', 'Robust Mahalanobis distance: Hotelling\'s T² control chart, fitted so past outliers don\'t hide new ones.'],
+               ['iforest', 'No assumption of a single elliptical cloud; handles several operating modes.'],
+               ['lof', 'Local density: catches batches odd for their own product, not for the plant as a whole.']],
+      act: 'Flag a batch when its distance from the normal operating cloud passes the chi-square limit; the largest standardised deviations say which variables pushed it out.',
+      tex: T`D^2(\mathbf x) = (\mathbf x - \hat{\boldsymbol\mu})^\top \hat\Sigma^{-1} (\mathbf x - \hat{\boldsymbol\mu}) > \chi^2_{p,\,0.997}` },
+
+    /* ================================================================ E  Energy & utilities */
+    { id: 'grid-load', ind: 'energy', shape: 'load', name: 'Day-ahead grid load', freq: 'H', h: 48, rows: 'l',
+      q: 'How much power will each zone of the grid need, hour by hour, tomorrow and the day after?',
+      cols: ['timestamp|t', 'zone|g', 'load_mw|y', 'is_workday|b+'],
+      sig: [['temp_fcst_c|n+*', 'Temperature forecast', 'Weather service (archived forecasts)', 'Heating and cooling make load a U-shaped function of temperature. The single most important driver.'],
+            ['solar_fcst_mw|n+', 'Behind-the-meter solar', 'Irradiance forecast × installed rooftop capacity', 'Rooftop panels hide load at midday; the grid sees load minus solar.'],
+            ['school_holiday|b+', 'School and public holidays', 'Calendars', 'Holiday weeks reshape the daily profile.'],
+            ['dr_event|b+', 'Demand-response events', 'Utility programmes', 'Customers paid to cut load at peak times; known the day before.']],
+      models: [['lgbm', 'The workhorse of load forecasting competitions: lags, calendar and weather forecasts.'],
+               ['tft', 'Quantiles for every hour of the horizon from the known-ahead weather.'],
+               ['nbeats', 'Pure pattern learner when weather data is thin.'],
+               ['arima', 'Regression with ARIMA errors: a classic, explainable benchmark.']],
+      act: 'Schedule generation and buy energy for the median; hold reserves for the gap to the upper quantile. Errors cost differently on each side, so read the quantile that matches the cost ratio.',
+      tex: T`\tau^* = \frac{c_{\text{short}}}{c_{\text{short}} + c_{\text{long}}},\qquad \text{commit } \hat q_{\tau^*}`,
+      watch: 'Heat pumps and electric cars are shifting the load curve year by year; weight recent years more, or add the adoption counts as a slow driver.' },
+
+    { id: 'solar-output', ind: 'energy', shape: 'load', name: 'Solar farm generation', freq: 'H', h: 48, rows: 'm',
+      q: 'How many megawatt-hours will each solar site produce per hour over the next two days?',
+      cols: ['timestamp|t', 'site_id|g', 'mwh|y', 'clear_sky_mwh|n+*'],
+      sig: [['irradiance_fcst|n+*', 'Irradiance forecast', 'Numerical weather prediction', 'Global horizontal irradiance for the site: the physics of the output.'],
+            ['cloud_cover_fcst|n+*', 'Cloud cover forecast', 'Weather API / satellite nowcasts', 'The main source of error; satellite nowcasts help for the next few hours.'],
+            ['panel_temp_fcst|n+', 'Temperature', 'Weather API', 'Panels lose efficiency when hot.'],
+            ['curtailed|b', 'Curtailment and outages', 'SCADA', 'Hours when output was capped by the grid aren\'t what the sun allowed; mark them or drop them.']],
+      models: [['lgbm', 'Learns the site\'s response to irradiance and clouds, including shading and inverter limits.'],
+               ['qgbm', 'Quantiles to bid with: the market penalises shortfalls.'],
+               ['tft', 'Multi-site, multi-horizon with weather covariates.'],
+               ['linreg', 'Output ≈ k × irradiance: the physical baseline.']],
+      act: 'Bid the quantile that minimises the expected imbalance cost, and schedule panel cleaning when actual output falls below the predicted clear-sky ratio for days in a row.',
+      tex: T`\text{bid} = \hat q_{\tau},\qquad \tau = \frac{\pi^{-}}{\pi^{-} + \pi^{+}}`,
+      feats: ['lags', 'cyclic', 'known', 'calendar'] },
+
+    { id: 'power-price', ind: 'energy', shape: 'load', name: 'Day-ahead electricity price', freq: 'H', h: 24, rows: 'm',
+      q: 'What will the electricity price be for each hour of tomorrow?',
+      cols: ['timestamp|t', 'price_eur_mwh|y', 'load_fcst_mw|n+*', 'is_workday|b+'],
+      sig: [['wind_fcst_mw|n+*', 'Wind and solar forecasts', 'TSO publications', 'Renewables push cheap supply into the merit order; high wind means low prices.'],
+            ['gas_price|n*', 'Gas and carbon prices', 'Commodity exchanges', 'Gas plants set the price in most hours.'],
+            ['outage_mw|n+', 'Plant outages', 'Transparency platforms (REMIT)', 'Planned outages announced in advance tighten supply.'],
+            ['interconnect_mw|n+', 'Interconnector capacity', 'TSO publications', 'Neighbouring markets import and export.']],
+      models: [['lgbm', 'Non-linear merit-order effects from load, renewables and fuel.'],
+               ['qgbm', 'Price spikes are the money: quantiles show their likelihood.'],
+               ['arima', 'Regression with ARIMA errors on log prices: the econometric baseline.'],
+               ['tft', 'Learns the daily shape and its drivers jointly.']],
+      act: 'Charge storage in the cheapest forecast hours and discharge in the dearest, as long as the spread beats the round-trip losses.',
+      tex: T`\text{act if } \hat p_{\text{high}}\,\eta - \hat p_{\text{low}} > c_{\text{wear}},\quad \eta = \text{round-trip efficiency}`,
+      feats: ['lags', 'calendar', 'known', 'log'],
+      watch: 'Negative prices and spikes make squared errors explode: use MAE or quantile loss, and never log-transform without an offset.' },
+
+    { id: 'meter-theft', ind: 'energy', shape: 'outlier', name: 'Meter tampering and energy theft', rows: 'l',
+      q: 'Which meters show consumption patterns typical of tampering or bypass?',
+      cols: ['meter_id|i', 'avg_kwh_day|n*', 'night_share|n', 'zero_days_90d|n*', 'drop_vs_last_year_pct|n*', 'tariff|c', 'region|c', 'confirmed_theft|Y'],
+      sig: [['neighbour_ratio|n*', 'Comparison with neighbours', 'Same street or transformer', 'Use far below similar homes on the same transformer is the classic sign.'],
+            ['transformer_loss_pct|n', 'Transformer losses', 'Feeder metering', 'Energy entering a transformer but not billed downstream.'],
+            ['inspections_past|n', 'Inspection history', 'Field service records', 'Past findings at the address or the same installer.']],
+      models: [['iforest', 'Isolates meters with unusual combinations of drops, zeros and night use.'],
+               ['lof', 'Compares each meter with its local neighbours, not the whole country.'],
+               ['robustcov', 'A robust distance on a few well-understood ratios.']],
+      act: 'Send inspectors to the top k meters, k being what the crews can visit this week. Feed their findings back as labels: precision at k is the measure that matters.',
+      tex: T`P@k = \frac{\#\{\text{confirmed in the top } k\}}{k}`,
+      watch: 'Once there are hundreds of confirmed cases, a supervised model (task: binary) usually beats the unsupervised detectors.' },
+
+    { id: 'load-profiles', ind: 'energy', shape: 'segment', name: 'Customer load profiles', rows: 'l',
+      q: 'Which daily usage shapes do our customers have, so tariffs and programmes fit each one?',
+      cols: ['meter_id|i', 'kwh_night|n', 'kwh_morning|n*', 'kwh_midday|n', 'kwh_evening|n*', 'weekend_ratio|n', 'winter_summer_ratio|n'],
+      sig: [['has_ev|b', 'Electric vehicle', 'Programme sign-ups / disaggregation', 'Late-evening charging is a distinct shape.'],
+            ['has_solar|b', 'Rooftop solar', 'Connection records', 'Midday export changes the whole profile.'],
+            ['heating_type|c', 'Heating type', 'Customer survey / property data', 'Heat pumps make winter peaks.']],
+      models: [['kmeans', 'On shares of daily use (normalised profiles), clusters read as typical days.'],
+               ['gmm', 'Soft membership for households between two shapes.'],
+               ['hdbscan', 'Finds the odd groups and leaves noise unassigned.']],
+      act: 'Offer time-of-use tariffs to the evening-peak cluster, battery or EV programmes to the clusters that would shift most, and use the clusters as series groups in the load forecast.',
+      feats: ['scaling', 'log', 'group-agg'] },
+
+    { id: 'asset-failure', ind: 'energy', shape: 'risk', name: 'Transformer and pipe failure risk', rows: 'm',
+      q: 'Which network assets are most likely to fail next year?',
+      cols: ['year|t', 'asset_id|i', 'asset_type|c', 'age_years|n*', 'material|c*', 'load_factor|n*', 'past_failures|n*', 'soil_type|c', 'fails_next_year|Y'],
+      sig: [['heat_days|n', 'Weather extremes', 'Climate records', 'Hot days overload transformers; freeze-thaw cycles crack pipes.'],
+            ['inspection_score|n*', 'Inspection results', 'Asset inspections', 'Oil analysis, thermal imaging and condition scores.'],
+            ['pressure_variation|n', 'Operating stress', 'SCADA', 'Pressure transients and overloads age assets faster.']],
+      models: [['lgbm', 'Mixes age, material and stress with their interactions.'],
+               ['logreg', 'Regulators like a model whose every coefficient can be explained.'],
+               ['rf', 'Robust on a few thousand assets.']],
+      act: 'Rank replacements by risk times consequence (customers affected, repair cost) and fund the top of the list.',
+      tex: T`\text{priority}_i = \hat p_i \times \big(C^{\text{repair}}_i + C^{\text{outage}}_i\big)`,
+      pri: [0.4, 0.4, 0.2] },
+
+    { id: 'water-demand', ind: 'energy', shape: 'load', name: 'Water demand per zone', freq: 'D', h: 14, rows: 's',
+      q: 'How much water will each supply zone use per day over the next two weeks?',
+      cols: ['date|t', 'zone|g', 'm3|y', 'is_holiday|b+'],
+      sig: [['temp_max_fcst|n+*', 'Temperature forecast', 'Weather API', 'Hot days mean gardens, pools and showers.'],
+            ['rain_fcst_mm|n+*', 'Rain forecast', 'Weather API', 'Rain switches off outdoor use for days.'],
+            ['restrictions|b+', 'Watering restrictions', 'Utility notices', 'Hosepipe bans cut peaks.'],
+            ['visitors|n+', 'Tourism and population', 'Tourism boards / mobile data', 'Holiday towns double in summer.']],
+      models: [['lgbm', 'Weather, calendar and lags across all zones at once.'],
+               ['ets', 'A per-zone baseline that captures the weekly rhythm.'],
+               ['prophet', 'Yearly and weekly seasonality with weather regressors.'],
+               ['arima', 'Regression with ARIMA errors on temperature and rain.']],
+      act: 'Pump into reservoirs during cheap-tariff hours to cover the upper quantile of tomorrow\'s demand, and trigger restrictions when the forecast exceeds what the sources can supply.',
+      tex: T`\text{pump}_t = \max\big(0,\ \hat q_{0.9}(D_{t+1}) - S_t\big)` },
+
+    { id: 'night-flow', ind: 'energy', shape: 'watch', name: 'Leak detection from night flow', freq: 'H', rows: 'm',
+      q: 'Has the night-time flow into a district risen above what it normally is, suggesting a new leak?',
+      cols: ['timestamp|t', 'district|g', 'flow_lps|y'],
+      sig: [['pressure_bar|n', 'Pressure', 'Network loggers', 'A burst drops the pressure as the flow rises.'],
+            ['frost|b', 'Frost', 'Weather API', 'Freeze-thaw cycles cause bursts; expect more alerts.'],
+            ['complaints|n', 'Customer reports', 'Contact centre', 'Low pressure and wet-road calls confirm a leak.']],
+      models: [['stl', 'Removes daily and weekly cycles per district; a lasting positive residual at night is a leak.'],
+               ['iforest', 'Scores flow together with pressure and weather.']],
+      act: 'Raise a leak alert when the minimum night flow stays above its expected value plus a margin for three nights; send the acoustic team to the worst district first.',
+      tex: T`\text{MNF}_d - \widehat{\text{MNF}}_d > 3\,\hat\sigma \quad \text{for 3 nights}` },
+
+    { id: 'ev-charging', ind: 'energy', shape: 'load', name: 'EV charging demand per station', freq: 'H', h: 48, rows: 'm',
+      q: 'How many kilowatt-hours will each public charging station deliver per hour over the next two days?',
+      cols: ['timestamp|t', 'station_id|g', 'kwh|y', 'is_holiday|b+'],
+      sig: [['temp_fcst_c|n+*', 'Temperature forecast', 'Weather API', 'Batteries charge slower and drain faster in the cold; winter sessions are longer.'],
+            ['tariff_eur_kwh|n+*', 'Charging tariff', 'Your own price schedule', 'Drivers move to cheap hours; the price is set by you, so it is known ahead.'],
+            ['registered_evs|n', 'EVs registered nearby', 'Vehicle registration statistics', 'The slow growth trend behind every station.'],
+            ['nearby_event|b+', 'Events and traffic', 'Event listings / traffic data', 'Stadium car parks and motorway holiday traffic.']],
+      models: [['lgbm', 'All stations together; hour-of-week, weather and tariff.'],
+               ['tft', 'Quantiles per station for grid connection planning.'],
+               ['naive', 'Same hour last week.']],
+      act: 'Book grid capacity and battery buffers for the upper quantile at each station, and set off-peak prices where the forecast peak exceeds the connection.',
+      tex: T`\text{buffer}_s = \max\big(0,\ \max_h \hat q_{0.95,s,h} - P^{\text{grid}}_s\big)`,
+      watch: 'New stations have almost no history: pool them in the global model with station features, or start from Chronos zero-shot.' },
+
+    { id: 'energy-churn', ind: 'energy', shape: 'propensity', name: 'Energy retail customer churn', rows: 'm',
+      q: 'Which household customers are about to switch to another supplier?',
+      cols: ['customer_id|i', 'tariff|c', 'months_on_supply|n', 'bill_change_pct|n*', 'complaints_12m|n*', 'days_to_contract_end|n*', 'has_solar|b', 'payment_method|c', 'switched|Y'],
+      sig: [['price_gap_pct|n*', 'Competitor price gap', 'Price-comparison sites', 'How much cheaper the best market offer is for this customer\'s usage.'],
+            ['app_logins_30d|n', 'Engagement', 'App and web analytics', 'Customers who stop logging in are often already leaving.'],
+            ['smart_meter|b', 'Smart meter', 'Meter records', 'Easier switching and different tariffs.']],
+      models: [['lgbm', 'Interactions between price gap and contract end.'],
+               ['logreg', 'Readable drivers for the retention team.'],
+               ['catboost', 'Tariffs and regions as categories.']],
+      act: 'Make a retention offer when the expected saved margin beats its cost.',
+      tex: T`\text{offer if } \hat p\,\cdot u \cdot \text{CLV} > c_{\text{offer}},\quad u = \text{chance the offer changes their mind}`,
+      watch: 'A churn score finds people likely to leave, not people an offer would keep. Hold out a random control group to measure the real effect.' },
+
+    /* ================================================================ R  Retail & e-commerce */
+    { id: 'store-demand', ind: 'retail', shape: 'demand', name: 'Store and SKU daily demand', freq: 'D', h: 14, rows: 'l',
+      q: 'How many units of each product will each store sell per day over the next two weeks?',
+      cols: ['date|t', 'store_id|g', 'sku|c', 'price|n+', 'promo|b+*', 'units|y'],
+      sig: [['temp_fcst_c|n+', 'Weather forecast', 'Weather API', 'Ice cream, barbecue and soup sell on the weather; so does footfall.'],
+            ['local_event|b+', 'Local events', 'Event listings / council calendars', 'Concerts, matches and fairs near the store.'],
+            ['competitor_promo|b+', 'Competitor promotions', 'Flyers / price scraping', 'A rival\'s offer next door takes volume.'],
+            ['marketing_spend|n+*', 'Marketing calendar', 'Marketing plan', 'Campaigns are planned weeks ahead: known-ahead drivers.']],
+      models: [['lgbm', 'The M5 competition winner\'s recipe: one global model over all store-SKU series.'],
+               ['tft', 'Quantiles per store and SKU with promotions known ahead.'],
+               ['catboost', 'Many SKUs and stores as categories without one-hot explosion.'],
+               ['ets', 'Per-series baseline for stable, high-volume lines.']],
+      act: 'Order up to the quantile set by the cost of running out versus the cost of leftovers (the newsvendor rule). Fresh lines with high waste cost sit lower; long-life lines sit higher.',
+      tex: T`Q^* = \hat F^{-1}\Big(\frac{c_u}{c_u + c_o}\Big),\quad c_u = \text{lost margin},\ c_o = \text{cost of a leftover}`,
+      watch: 'Zero sales on a day the shelf was empty is not zero demand. Flag stock-outs and drop or impute those days, or the model learns to forecast empty shelves.' },
+
+    { id: 'markdown', ind: 'retail', shape: 'value', name: 'Markdown and price response', rows: 'm',
+      q: 'How much more will this item sell at a given discount, and which markdown clears it profitably?',
+      cols: ['week_start|d', 'sku|i', 'category|c', 'weeks_since_launch|n', 'discount_pct|n*', 'price_vs_category|n*', 'stock_cover_weeks|n', 'sell_through_pct|y'],
+      sig: [['competitor_price_idx|n*', 'Competitor prices', 'Price scraping', 'A discount only matters relative to the alternatives.'],
+            ['season_left_weeks|n', 'Weeks left in the season', 'Merchandise calendar', 'Coats in February need deeper cuts.'],
+            ['web_views|n', 'Product page views', 'Web analytics', 'Interest that hasn\'t converted yet.']],
+      models: [['lgbm', 'Learns the non-linear response to discount, with monotone constraints on price.'],
+               ['linreg', 'Log-log model: the slope is the elasticity, one number merchandisers understand.'],
+               ['catboost', 'Categories and seasons with little tuning.']],
+      act: 'Simulate sell-through at each candidate discount and pick the one with the highest expected margin over the remaining season.',
+      tex: T`d^* = \arg\max_d\ \big(p(1-d) - c\big)\,\hat q(d),\qquad \varepsilon = \frac{\partial \log q}{\partial \log p}`,
+      feats: ['log', 'interactions', 'target-enc'],
+      watch: 'Prices in history were set in reaction to demand (slow items got discounted), so the model can confuse cause and effect. Random price tests on a few stores give a clean elasticity.' },
+
+    { id: 'repeat-buyer', ind: 'retail', shape: 'propensity', name: 'Repeat purchase in the next 90 days', rows: 'l',
+      q: 'Which customers will buy again in the next three months, and which are drifting away?',
+      cols: ['customer_id|i', 'recency_days|n*', 'frequency_12m|n*', 'monetary_12m|n*', 'avg_discount_pct|n', 'returns_rate|n', 'channel|c', 'buys_next_90d|Y'],
+      sig: [['email_opens_30d|n', 'Email engagement', 'Email platform', 'Opens and clicks fade before purchases do.'],
+            ['site_visits_30d|n*', 'Site and app visits', 'Web analytics', 'Browsing without buying is a strong short-term signal.'],
+            ['nps|n', 'Satisfaction', 'Surveys', 'Unhappy customers leave quietly.']],
+      models: [['lgbm', 'Recency, frequency and money with all their interactions.'],
+               ['logreg', 'The RFM scorecard marketers already understand.'],
+               ['catboost', 'Channels and segments as categories.']],
+      act: 'Spend win-back budget where the probability is middling: near-certain buyers come back anyway and the lost ones rarely respond.',
+      tex: T`\text{target } \{\,i : p_{\text{low}} < \hat p_i < p_{\text{high}}\,\}`,
+      watch: 'The real goal is uplift (who buys because of the email). Keep a random holdout in every campaign so you can measure it.' },
+
+    { id: 'clv', ind: 'retail', shape: 'value', name: 'Customer lifetime value from the first order', rows: 'm',
+      q: 'How much will a new customer spend in their first year, judged from their first order?',
+      cols: ['customer_id|i', 'first_order_value|n*', 'n_items_first|n', 'acquisition_channel|c*', 'first_category|c', 'used_discount|b*', 'region|c', 'spend_next_12m|y'],
+      sig: [['visits_first_week|n*', 'Early engagement', 'Web analytics', 'Visits and wish-list adds in the first week.'],
+            ['campaign|c', 'Acquisition campaign', 'Ad platforms', 'Some campaigns buy loyal customers, others bargain hunters.']],
+      models: [['lgbm', 'Handles the many zeros and long tail with a Tweedie or log target.'],
+               ['qgbm', 'The median customer and the P90 whale, separately.'],
+               ['catboost', 'Channels and campaigns as categories.'],
+               ['glm', 'Poisson-style regression on spend: simple and stable.']],
+      act: 'Cap what each channel may pay to acquire a customer at a share of their predicted value, and re-allocate budget weekly.',
+      tex: T`\text{CAC}_{\max}(\text{channel}) = \alpha\ \mathbb E\big[\widehat{\text{CLV}} \mid \text{channel}\big]`,
+      feats: ['log', 'target-enc', 'group-agg'] },
+
+    { id: 'rfm-segments', ind: 'retail', shape: 'segment', name: 'Customer segments (RFM and beyond)', rows: 'm',
+      q: 'Which kinds of customers do we have, so marketing can talk to each one differently?',
+      cols: ['customer_id|i', 'recency_days|n*', 'orders_12m|n*', 'spend_12m|n*', 'avg_basket|n', 'discount_share|n', 'categories_bought|n', 'channel|c'],
+      sig: [['age_band|c', 'Demographics', 'Loyalty sign-up', 'Use with care, and only with consent.'],
+            ['app_user|b', 'App user', 'App analytics', 'App users behave differently from web-only shoppers.']],
+      models: [['kmeans', 'On log-scaled RFM: clear centroids such as "lapsed big spenders".'],
+               ['gmm', 'Soft segments for customers between two profiles.'],
+               ['hdbscan', 'Finds small, dense groups (resellers, gift buyers) and leaves the rest as noise.']],
+      act: 'Give each segment a name, a goal and a message (win back, upsell, protect), and track segment moves month to month.' },
+
+    { id: 'returns', ind: 'retail', shape: 'risk', name: 'Will this order be returned?', rows: 'l',
+      q: 'At checkout, how likely is it that this order comes back?',
+      cols: ['order_date|t', 'order_id|i', 'category|c', 'price|n', 'sizes_of_same_item|n*', 'customer_return_rate|n*', 'discount_pct|n', 'first_order|b', 'returned|Y'],
+      sig: [['fit_reviews_score|n', 'Product fit reviews', 'Reviews', '"Runs small" items come back.'],
+            ['size_chart_views|n', 'Size-guide views', 'Web analytics', 'Hesitation before the purchase.']],
+      models: [['lgbm', 'Bracketing (several sizes of the same item) and customer history interact.'],
+               ['catboost', 'Categories, brands and sizes.'],
+               ['logreg', 'A readable baseline.']],
+      act: 'Show fit advice or a size recommendation before checkout when the risk is high, and book expected returns into revenue and warehouse plans.',
+      tex: T`\mathbb E[\text{net revenue}] = \sum_i v_i\,(1 - \hat p_i)`,
+      watch: 'Don\'t punish customers on the score alone; it encodes past behaviour, and some return rates are part of good service.' },
+
+    { id: 'order-fraud', ind: 'retail', shape: 'outlier', name: 'Order and account fraud', rows: 'l',
+      q: 'Which orders look unlike genuine shoppers: stolen cards, account takeover, promo abuse?',
+      cols: ['order_id|i', 'amount|n*', 'items|n', 'account_age_days|n*', 'shipping_ne_billing|b*', 'orders_same_device_24h|n', 'country|c', 'chargeback|Y'],
+      sig: [['device_risk|n*', 'Device fingerprint', 'Fraud vendors', 'Emulators, proxies and devices seen with many accounts.'],
+            ['email_age_days|n', 'Email age', 'Email reputation services', 'Brand-new email addresses are risky.'],
+            ['velocity_1h|n', 'Velocity', 'Your own order stream', 'Many orders from one card or address in an hour.']],
+      models: [['iforest', 'Finds rare combinations without needing labels.'],
+               ['lof', 'Local density: odd for this merchant category, not just overall.'],
+               ['robustcov', 'Distance on a few robust ratios.']],
+      act: 'Hold the top-scoring orders for review, and choose the cut-off so expected fraud losses beat the cost of reviews and of annoyed genuine customers.',
+      tex: T`\text{review if } \hat s_i \ge s^*,\quad s^* \text{ from } \textstyle\sum \text{fraud caught} \cdot v - \#\text{reviews}\cdot c_r - \#\text{false alarms}\cdot c_f`,
+      watch: 'Chargebacks arrive weeks later, so recent labels are incomplete. Once labels are plentiful, a supervised model (task: binary, LightGBM) usually wins.' },
+
+    { id: 'footfall', ind: 'retail', shape: 'load', name: 'Store footfall for staffing', freq: 'H', h: 168, rows: 'm',
+      q: 'How many shoppers will come in each hour next week, so the rota matches the rush?',
+      cols: ['timestamp|t', 'store_id|g', 'visitors|y', 'is_holiday|b+', 'promo|b+*'],
+      sig: [['rain_fcst_mm|n+*', 'Weather forecast', 'Weather API', 'Rain empties high streets and fills malls.'],
+            ['school_holiday|b+', 'School holidays', 'Calendars', 'Weekday afternoons change shape.'],
+            ['payday|b+', 'Paydays', 'Calendars', 'The weekend after payday is busier.']],
+      models: [['lgbm', 'Hour-of-week, holidays and weather across all stores.'],
+               ['prophet', 'Daily and weekly seasonality per store; easy for managers to read.'],
+               ['ets', 'A quick baseline per store.']],
+      act: 'Turn the forecast into staff per hour with a service target, for example no more than 2 minutes\' wait at the tills (Erlang C), then build the rota.',
+      tex: T`n_h = \min\{\,n : P(\text{wait} > 2\,\text{min} \mid \lambda = \hat y_h,\ n) \le 0.2\,\}` },
+
+    { id: 'product-category', ind: 'retail', shape: 'triage', name: 'Auto-categorising product listings', rows: 'm',
+      q: 'Which category does a new product belong in, from its title and description?',
+      cols: ['product_id|i', 'title|x*', 'description|x', 'brand|c', 'price|n', 'category|L'],
+      sig: [['supplier_category|c*', 'Supplier\'s own category', 'Supplier feed', 'Different taxonomy, but strongly related.'],
+            ['image_label|c', 'Image tags', 'An image model', 'A vision model\'s label becomes a column here.']],
+      models: [['logreg', 'TF-IDF + logistic regression: the strong, fast text baseline.'],
+               ['svm', 'Linear SVM on TF-IDF, often the most accurate classic text model.'],
+               ['nb', 'Naive Bayes for very small training sets.'],
+               ['lgbm', 'Mixes text with price and brand.']],
+      act: 'Auto-file listings when the top probability is high (say 0.9); send the rest to a person with the top three suggestions.',
+      tex: T`\text{auto if } \max_k \hat p_k \ge 0.9,\quad \text{else review}` },
+
+    { id: 'new-product', ind: 'retail', shape: 'demand', task: 'regression', name: 'Demand for a brand-new product', rows: 's',
+      q: 'How many units will a product with no sales history sell in its first eight weeks?',
+      cols: ['sku|i', 'category|c*', 'price|n*', 'colour|c', 'size_range|n', 'launch_month|c', 'stores_listed|n*', 'first_8w_units|y'],
+      sig: [['pre_orders|n*', 'Pre-orders and wish lists', 'E-commerce', 'Demand you can count before launch.'],
+            ['search_volume|n', 'Search interest', 'Search trends', 'Interest in the product type and brand.'],
+            ['marketing_spend|n', 'Launch marketing', 'Marketing plan', 'Big launches sell more on day one.']],
+      models: [['catboost', 'Attributes are mostly categories; works with a few hundred past launches.'],
+               ['knn', 'Analogue forecasting: the average of the most similar past launches, which buyers can inspect.'],
+               ['lgbm', 'With thousands of launches.'],
+               ['ridge', 'A readable attribute model.']],
+      act: 'Size the first buy at a quantile of the prediction, keep part of it as a reorder option, and switch to a time-series forecast once two or three weeks of sales exist.',
+      val: 'kfold', metrics: ['mae', 'mape', 'r2'], feats: ['target-enc', 'onehot', 'log'] },
+
+    { id: 'kpi-watch', ind: 'retail', shape: 'watch', name: 'Revenue and conversion monitoring', freq: 'H', rows: 'm',
+      q: 'Is revenue in any channel lower than it should be at this hour, given the day and season?',
+      cols: ['timestamp|t', 'channel|g', 'revenue|y'],
+      sig: [['sessions|n', 'Traffic', 'Web analytics', 'Tells a traffic drop (marketing) from a conversion drop (a broken checkout).'],
+            ['deploy|b', 'Releases', 'Deployment log', 'Most sudden drops start with a release.']],
+      models: [['stl', 'Per channel: removes daily, weekly and yearly patterns, flags what is left.'],
+               ['iforest', 'Scores revenue together with traffic and releases.']],
+      act: 'Page the on-call team when a channel sits below its expected value for two hours in a row; a drop right after a release points at the checkout.' },
+
+    /* ================================================================ L  Transport & logistics */
+    { id: 'delivery-eta', ind: 'logistics', shape: 'duration', name: 'Delivery time (ETA)', rows: 'l',
+      q: 'How many hours will this shipment take door to door, and what should we promise?',
+      cols: ['dispatched_at|t', 'shipment_id|i', 'origin_hub|c', 'dest_zone|c*', 'distance_km|n*', 'weight_kg|n', 'service_level|c', 'dispatch_hour|n', 'transit_h|y'],
+      sig: [['traffic_idx|n*', 'Live traffic', 'Maps / traffic APIs', 'Congestion on the main legs at dispatch time.'],
+            ['weather_severity|n', 'Weather', 'Weather API', 'Snow and storms slow linehaul and last mile.'],
+            ['hub_backlog|n*', 'Hub backlog', 'Warehouse system', 'Parcels waiting to be sorted at the next hub.']],
+      models: [['qgbm', 'The P50 to plan with and the P90 to promise.'],
+               ['lgbm', 'Fast point estimates on millions of shipments.'],
+               ['catboost', 'Hubs and zones as categories.']],
+      act: 'Promise the P90 to customers and plan routes on the P50; re-predict at each scan and warn the customer as soon as the new P90 passes the promise.',
+      tex: T`\text{promise} = t_0 + \hat q_{0.9}(\text{transit}),\qquad \text{warn if } t_{\text{now}} + \hat q_{0.9}^{\text{(now)}} > \text{promise}` },
+
+    { id: 'parcel-volume', ind: 'logistics', shape: 'demand', name: 'Parcel volume per hub', freq: 'D', h: 21, rows: 'm',
+      q: 'How many parcels will each hub handle per day over the next three weeks?',
+      cols: ['date|t', 'hub|g', 'parcels|y', 'is_holiday|b+'],
+      sig: [['client_forecast|n+*', 'Shippers\' forecasts', 'Key-account plans', 'Big shippers know their campaigns; ask for their forecast and learn its bias.'],
+            ['peak_event|b+*', 'Retail events', 'Calendar (Black Friday, Singles\' Day)', 'The few days that break every pattern.'],
+            ['web_traffic_idx|n', 'E-commerce traffic', 'Shippers\' analytics / panels', 'Orders today are parcels tomorrow.']],
+      models: [['lgbm', 'All hubs together, with event flags known ahead.'],
+               ['tft', 'Quantiles per hub and day for staffing.'],
+               ['ets', 'Per-hub baseline.']],
+      act: 'Book agency staff and trucks for the upper quantile; release the extra shifts two days out when the forecast tightens.',
+      tex: T`\text{trucks}_d = \Big\lceil \frac{\hat q_{0.9}(V_d)}{\text{capacity per truck}} \Big\rceil` },
+
+    { id: 'sla-miss', ind: 'logistics', shape: 'risk', name: 'Shipments at risk of missing the SLA', rows: 'l',
+      q: 'Which shipments in the network right now will arrive after the promised time?',
+      cols: ['scan_time|t', 'shipment_id|i', 'service_level|c', 'hours_to_deadline|n*', 'hops_left|n*', 'current_hub|c', 'carrier|c', 'late|Y'],
+      sig: [['hub_backlog|n*', 'Hub congestion', 'Warehouse system', 'Backlog at the next hubs on the route.'],
+            ['weather_alert|b', 'Weather alerts', 'Weather API', 'Storms on the route.']],
+      models: [['lgbm', 'Time left, hops and congestion together.'],
+               ['logreg', 'A simple, readable control-tower score.']],
+      act: 'Re-route or upgrade the shipments where the risk times the penalty is above the cost of the intervention.',
+      tex: T`\text{intervene if } \hat p\,\cdot \text{penalty} > c_{\text{upgrade}}` },
+
+    { id: 'vehicle-breakdown', ind: 'logistics', shape: 'risk', name: 'Vehicle breakdown risk', rows: 'm',
+      q: 'Which trucks are likely to break down in the next 30 days?',
+      cols: ['snapshot_date|t', 'vehicle_id|i', 'model|c', 'odometer_km|n', 'km_since_service|n*', 'avg_load_t|n', 'fault_codes_30d|n*', 'harsh_braking_100km|n', 'breaks_next_30d|Y'],
+      sig: [['coolant_temp_trend|n*', 'Engine telematics', 'CAN bus / telematics', 'Rising temperatures and pressures before a failure.'],
+            ['route_type|c', 'Route profile', 'Route plans', 'Hilly and urban routes wear brakes and clutches.']],
+      models: [['lgbm', 'Telematics aggregates and fault codes.'],
+               ['rf', 'Robust with a few hundred vehicles.'],
+               ['logreg', 'A readable baseline for the workshop.']],
+      act: 'Pull high-risk vehicles into the workshop on their next quiet day, before a roadside breakdown costs a tow and a missed delivery.',
+      tex: T`\text{service if } \hat p\,C_{\text{breakdown}} > C_{\text{early service}}` },
+
+    { id: 'fuel-use', ind: 'logistics', shape: 'value', name: 'Fuel use per trip', rows: 'm',
+      q: 'How much fuel should this trip need, so we can spot waste and coach drivers?',
+      cols: ['trip_id|i', 'distance_km|n*', 'payload_t|n*', 'elevation_gain_m|n*', 'avg_speed_kmh|n', 'stops|n', 'vehicle_model|c', 'litres|y'],
+      sig: [['headwind_kmh|n', 'Wind', 'Weather API', 'Headwind costs a truck several percent.'],
+            ['temp_c|n', 'Temperature', 'Weather API', 'Cold engines and heating use more.'],
+            ['idle_min|n*', 'Idling', 'Telematics', 'The habit coaching can change.']],
+      models: [['lgbm', 'Non-linear effects of speed and load.'],
+               ['linreg', 'Physics-like: litres per km, per tonne, per metre climbed.'],
+               ['ridge', 'Stable when inputs are correlated.']],
+      act: 'Compare each driver\'s actual fuel with the prediction for the same trips; the residual, not the raw litres, is what coaching should target.',
+      tex: T`r_{\text{driver}} = \frac{1}{n}\sum_{\text{trips}} \big(y - \hat y\big)` },
+
+    { id: 'freight-rate', ind: 'logistics', shape: 'demand', name: 'Spot freight rates per lane', freq: 'W', h: 8, rows: 's',
+      q: 'What will the spot rate be on each lane over the next two months?',
+      cols: ['week|t', 'lane|g', 'rate_per_km|y', 'diesel_price|n*'],
+      sig: [['tender_rejection_pct|n*', 'Tender rejections', 'Transport management system', 'Carriers turning down contract loads signal a tight market.'],
+            ['load_to_truck|n*', 'Load-to-truck ratio', 'Freight boards', 'Demand against capacity on the lane.'],
+            ['port_volume|n', 'Import volumes', 'Port statistics', 'Containers landing now are trucks needed soon.']],
+      models: [['lgbm', 'Global over lanes, with market indicators lagged.'],
+               ['arima', 'Rates are autocorrelated; SARIMAX with diesel as a regressor.'],
+               ['var', 'Rates, diesel and the market indicators move together.']],
+      act: 'Shift volume between contract and spot: lock contracts when the forecast says rates will rise, ride the spot market when they will fall.',
+      watch: 'Markets react to everyone\'s forecasts; expect modest accuracy and lean on the intervals.' },
+
+    { id: 'sku-slotting', ind: 'logistics', shape: 'segment', name: 'Warehouse slotting groups', rows: 's',
+      q: 'Which products should sit together in the warehouse, given how they are picked?',
+      cols: ['sku|i', 'picks_per_day|n*', 'units_per_pick|n', 'cube_cm3|n*', 'weight_kg|n', 'co_pick_rate|n*', 'seasonality_idx|n'],
+      sig: [['fragile|b', 'Handling class', 'Product master', 'Fragile and hazardous goods have rules.'],
+            ['promo_flag|b', 'Upcoming promotions', 'Merchandising plan', 'Promoted items should move forward early.']],
+      models: [['kmeans', 'Velocity and size groups for zones.'],
+               ['agglo', 'A hierarchy from zones down to aisles.'],
+               ['gmm', 'Soft membership for borderline items.']],
+      act: 'Slot the fast, small cluster in the golden zone next to dispatch, bulky slow movers in high racking, and re-cluster each season.' },
+
+    { id: 'cold-chain', ind: 'logistics', shape: 'outlier', name: 'Cold-chain excursions', rows: 'm',
+      q: 'Which refrigerated shipments had a journey unlike the normal ones?',
+      cols: ['shipment_id|i', 'max_temp_c|n*', 'minutes_above_8c|n*', 'dwell_h|n', 'door_openings|n', 'route_deviation_km|n', 'spoiled|Y'],
+      sig: [['ambient_max_c|n', 'Outside temperature', 'Weather API', 'Hot days stress the reefers.'],
+            ['reefer_age_y|n', 'Unit age', 'Fleet records', 'Old refrigeration units drift.']],
+      models: [['iforest', 'Unusual combinations of heat, dwell and door openings.'],
+               ['robustcov', 'A robust distance on a handful of sensor summaries.'],
+               ['lof', 'Odd compared with shipments on the same lane.']],
+      act: 'Quarantine and test the flagged pallets before they reach the customer; the top contributing variable says whether to call the driver, the depot or maintenance.' },
+
+    { id: 'claim-cause', ind: 'logistics', shape: 'triage', name: 'Damage claim causes', rows: 's',
+      q: 'From the claim description, what most likely caused the damage?',
+      cols: ['claim_id|i', 'description|x*', 'carrier|c', 'packaging|c', 'value|n', 'cause|L'],
+      sig: [['scan_gaps|n', 'Scan history', 'Tracking events', 'Missing scans point to where it happened.'],
+            ['photo_label|c', 'Photo tags', 'An image model', 'A vision model\'s label as a column.']],
+      models: [['logreg', 'TF-IDF on the description plus carrier and packaging.'],
+               ['svm', 'Linear SVM: often the best classic text classifier.'],
+               ['nb', 'Small training sets.']],
+      act: 'Route the claim to the responsible party (carrier, warehouse, packaging supplier) automatically, and fix the top causes at their source each quarter.' },
+
+    { id: 'ride-demand', ind: 'logistics', shape: 'load', name: 'Ride and mobility demand per zone', freq: 'H', h: 24, rows: 'l',
+      q: 'How many trips will start in each city zone per hour, so vehicles are where riders are?',
+      cols: ['timestamp|t', 'zone_id|g', 'trips|y', 'is_holiday|b+'],
+      sig: [['rain_fcst_mm|n+*', 'Rain forecast', 'Weather API', 'Rain multiplies ride demand within minutes.'],
+            ['event_end|b+*', 'Events ending', 'Venue schedules', 'Concerts and matches empty out at a known time.'],
+            ['flight_arrivals|n+', 'Flight arrivals', 'Airport schedules', 'Airport zones follow the arrivals board.'],
+            ['transit_disruption|b+', 'Transit disruptions', 'Transit feeds', 'Strikes and closures push people to rides.']],
+      models: [['lgbm', 'All zones together with hour-of-week and the known-ahead drivers.'],
+               ['tft', 'Multi-horizon quantiles per zone.'],
+               ['naive', 'Same hour last week.']],
+      act: 'Reposition idle vehicles toward zones where forecast demand exceeds supply, and set incentives where the gap persists.',
+      tex: T`\text{gap}_z = \hat y_{z,h} - \text{supply}_{z,h}` },
+
+    /* ================================================================ H  Healthcare */
+    { id: 'ed-arrivals', ind: 'health', shape: 'load', name: 'Emergency department arrivals', freq: 'H', h: 72, rows: 'm',
+      q: 'How many patients will arrive at the emergency department each hour over the next three days?',
+      cols: ['timestamp|t', 'site|g', 'arrivals|y', 'is_holiday|b+'],
+      sig: [['flu_rate|n*', 'Flu surveillance', 'Public health reports', 'Influenza-like illness rates lead arrivals by days.'],
+            ['temp_fcst_c|n+', 'Weather forecast', 'Weather API', 'Heatwaves and icy pavements both fill EDs.'],
+            ['air_quality_fcst|n+', 'Air quality', 'Air quality forecasts', 'Respiratory cases rise with pollution.'],
+            ['local_event|b+', 'Large events', 'City calendars', 'Festivals and matches.']],
+      models: [['lgbm', 'Hour-of-week patterns with weather and surveillance.'],
+               ['prophet', 'Multiple seasonalities and holidays, readable by managers.'],
+               ['ets', 'A robust per-site baseline.']],
+      act: 'Staff each hour to the upper quantile of arrivals, translated into clinician hours with the average time per patient.',
+      tex: T`\text{staff}_h = \Big\lceil \frac{\hat q_{0.8}(A_h)\,\bar s}{60} \Big\rceil,\quad \bar s = \text{minutes per patient}` },
+
+    { id: 'readmission', ind: 'health', shape: 'risk', name: '30-day readmission risk', rows: 'm', pri: [0.35, 0.5, 0.15],
+      q: 'Which patients being discharged are likely to be readmitted within 30 days?',
+      cols: ['discharge_date|t', 'encounter_id|i', 'age|n', 'dx_group|c*', 'prior_admissions_12m|n*', 'length_of_stay_d|n', 'n_medications|n*', 'discharged_to|c', 'lives_alone|b', 'readmitted_30d|Y'],
+      sig: [['deprivation_idx|n', 'Neighbourhood deprivation', 'Census by postcode', 'Social circumstances predict readmission as much as diagnoses do.'],
+            ['followup_booked|b*', 'Follow-up booked', 'Scheduling system', 'A booked appointment within 7 days lowers risk, and it is something you can change.'],
+            ['pharmacy_fill|b', 'Prescriptions collected', 'Pharmacy data', 'Patients who don\'t collect their medicine come back.']],
+      models: [['logreg', 'Clinicians need to see why: coefficients and odds ratios, well calibrated.'],
+               ['lgbm', 'Higher accuracy, explained per patient with SHAP values.'],
+               ['catboost', 'Diagnosis groups with many levels.']],
+      act: 'Offer transitional care (a call within 48 hours, a nurse visit) to the highest-risk discharges, sized to what the team can deliver.',
+      tex: T`\text{enrol top } k \text{ by } \hat p_i,\quad k = \text{team capacity}`,
+      metrics: ['auc', 'brier', 'prauc'],
+      watch: 'Check calibration and error rates for each age, sex and ethnic group before use; a model trained on who got care in the past can repeat its gaps.' },
+
+    { id: 'length-of-stay', ind: 'health', shape: 'duration', name: 'Length of stay at admission', rows: 'm',
+      q: 'How many days will this admitted patient stay, so beds and discharge can be planned?',
+      cols: ['admitted_at|t', 'admission_id|i', 'age|n*', 'admission_type|c*', 'dx_group|c*', 'comorbidities|n*', 'weekday_admitted|c', 'ward|c', 'los_days|y'],
+      sig: [['frailty_score|n*', 'Frailty score', 'Clinical assessment', 'Strong predictor for older patients.'],
+            ['social_care_needed|b', 'Social care needs', 'Discharge planning', 'Delays waiting for a care place are a large share of long stays.']],
+      models: [['qgbm', 'Median and P90 stay: the P90 is what blocks beds.'],
+               ['lgbm', 'Point estimate with interactions.'],
+               ['glm', 'Poisson model of days: stable and readable.']],
+      act: 'Start discharge planning on day one for patients whose P90 stay is long, and feed expected discharges into tomorrow\'s bed plan.' },
+
+    { id: 'no-show', ind: 'health', shape: 'propensity', name: 'Appointment no-shows', rows: 'm',
+      q: 'Which booked patients are likely not to turn up?',
+      cols: ['appointment_id|i', 'lead_days|n*', 'age|n', 'clinic|c', 'prior_no_shows|n*', 'sms_sent|b', 'distance_km|n', 'weekday|c', 'no_show|Y'],
+      sig: [['rain_fcst_mm|n', 'Weather on the day', 'Weather API', 'Bad weather keeps people home.'],
+            ['transit_strike|b', 'Transport disruption', 'Transit feeds', 'Strikes and closures.'],
+            ['deprivation_idx|n', 'Deprivation', 'Census by postcode', 'Cost and time of travel matter.']],
+      models: [['lgbm', 'Lead time and history interact.'],
+               ['logreg', 'Readable for the clinic.'],
+               ['catboost', 'Clinics and weekdays as categories.']],
+      act: 'Call or text the high-risk patients, and overbook each session by the expected number of no-shows minus a margin.',
+      tex: T`\text{overbook} = \Big\lfloor \sum_{i\in\text{session}} \hat p_i - z\sqrt{\textstyle\sum_i \hat p_i(1-\hat p_i)} \Big\rfloor` },
+
+    { id: 'bed-occupancy', ind: 'health', shape: 'demand', name: 'Bed occupancy by ward', freq: 'D', h: 14, rows: 's',
+      q: 'How many beds will each ward need per day over the next two weeks?',
+      cols: ['date|t', 'ward|g', 'occupied_beds|y', 'is_holiday|b+'],
+      sig: [['elective_scheduled|n+*', 'Elective schedule', 'Theatre booking', 'Planned operations fill surgical beds: known ahead.'],
+            ['ed_arrivals_fcst|n+', 'Expected emergency arrivals', 'Case H.1', 'One model\'s forecast is another\'s known-ahead driver.'],
+            ['flu_rate|n', 'Flu season', 'Public health reports', 'Winter pressure.']],
+      models: [['lgbm', 'Elective plans, emergencies and seasonality together.'],
+               ['ets', 'Per-ward baseline.'],
+               ['arima', 'SARIMAX with the elective schedule.']],
+      act: 'Open escalation beds or postpone electives when the P90 occupancy crosses the safe level (around 92%) for a ward.',
+      tex: T`\text{escalate if } \hat q_{0.9}(\text{occupancy}_d) > 0.92 \times \text{beds}` },
+
+    { id: 'deterioration', ind: 'health', shape: 'risk', name: 'Early warning of deterioration', rows: 'l', pri: [0.45, 0.4, 0.15],
+      q: 'Which ward patients are likely to deteriorate (ICU, emergency call) in the next 12 hours?',
+      cols: ['observed_at|t', 'stay_id|i', 'heart_rate|n*', 'resp_rate|n*', 'temp_c|n', 'systolic_bp|n*', 'spo2|n*', 'consciousness|c', 'hours_since_admit|n', 'deteriorates_12h|Y'],
+      sig: [['lactate|n*', 'Lab results', 'Laboratory system', 'Lactate and white cells add a lot to vital signs.'],
+            ['vitals_trend_6h|n', 'Trends', 'Observation history', 'The change matters as much as the level.'],
+            ['nurse_concern|b', 'Nurse concern', 'Nursing notes', 'Experienced worry is a validated predictor.']],
+      models: [['lgbm', 'Non-linear vital-sign thresholds and trends.'],
+               ['logreg', 'Comparable with existing early-warning scores (NEWS2).'],
+               ['catboost', 'Handles missing labs gracefully.']],
+      act: 'Escalate to the rapid-response team above a threshold set with clinicians, so that alerts stay few enough to be trusted.',
+      tex: T`\text{alert if } \hat p > t,\quad t \text{ chosen so alerts/ward/day} \le a`,
+      metrics: ['prauc', 'auc', 'brier'],
+      watch: 'Treatment changes the outcome: patients flagged and treated may not deteriorate, which looks like a false alarm. This is regulated clinical software in most countries; validate prospectively.' },
+
+    { id: 'clinical-coding', ind: 'health', shape: 'triage', name: 'Clinical coding suggestions', rows: 'm',
+      q: 'Which diagnosis group does this discharge summary belong to?',
+      cols: ['note_id|i', 'note_text|x*', 'department|c', 'age|n', 'code_group|L'],
+      sig: [['lab_flags|x', 'Abnormal lab results', 'Laboratory system', 'Text list of abnormal tests.'],
+            ['procedures|x', 'Procedures performed', 'Theatre system', 'Procedure names point to the diagnosis.']],
+      models: [['logreg', 'TF-IDF on the notes: fast, accurate and explainable word by word.'],
+               ['svm', 'A strong linear text classifier.'],
+               ['nb', 'Rare code groups with few examples.']],
+      act: 'Pre-fill the top suggestions for the coder, who confirms or corrects; corrections become new training data.' },
+
+    { id: 'pharmacy-usage', ind: 'health', shape: 'demand', name: 'Hospital pharmacy drug usage', freq: 'W', h: 8, rows: 's',
+      q: 'How many doses of each drug will the hospital use per week over the next two months?',
+      cols: ['week|t', 'drug_code|g', 'doses|y', 'admissions_planned|n+*'],
+      sig: [['flu_rate|n', 'Seasonal illness', 'Public health reports', 'Antivirals and antibiotics follow the season.'],
+            ['formulary_change|b+', 'Formulary changes', 'Pharmacy committee', 'Switching a drug moves demand overnight.'],
+            ['shortage_notice|b', 'Supply shortages', 'Wholesaler notices', 'Substitutes see the spike.']],
+      models: [['qgbm', 'Quantiles for stock levels, across all drugs.'],
+               ['ets', 'Per-drug baseline.'],
+               ['glm', 'Poisson for rarely used drugs.']],
+      act: 'Hold safety stock to the upper quantile over the supplier lead time (as in M.1), and order less of short-dated drugs to cut expiry waste.' },
+
+    { id: 'patient-cohorts', ind: 'health', shape: 'segment', name: 'Patient cohorts for care pathways', rows: 's',
+      q: 'Which groups of patients with a chronic condition have similar needs?',
+      cols: ['patient_id|i', 'age|n', 'bmi|n', 'hba1c|n*', 'systolic_bp|n', 'visits_12m|n*', 'n_medications|n*', 'admissions_12m|n'],
+      sig: [['adherence_pct|n', 'Medication adherence', 'Pharmacy data', 'Separates "not controlled" from "not taking it".'],
+            ['deprivation_idx|n', 'Deprivation', 'Census by postcode', 'Social needs shape the right pathway.']],
+      models: [['gmm', 'Soft cohorts with probabilities, honest about overlap.'],
+               ['kmeans', 'Clear centroids that clinicians can name.'],
+               ['hdbscan', 'Finds small high-need groups and leaves the rest unassigned.']],
+      act: 'Design a pathway per cohort (education, medication review, case management) and check outcomes per cohort a year later.' },
+
+    { id: 'billing-anomaly', ind: 'health', shape: 'outlier', name: 'Billing anomalies and upcoding', rows: 'm',
+      q: 'Which providers bill in a way unlike their peers?',
+      cols: ['provider_id|i', 'specialty|c', 'claims_per_patient|n*', 'avg_claim_value|n*', 'share_high_codes|n*', 'weekend_share|n', 'patients|n', 'confirmed_issue|Y'],
+      sig: [['peer_ratio|n*', 'Peer comparison', 'Same specialty and region', 'Unusual for an orthopaedic surgeon matters more than unusual overall.'],
+            ['patient_complaints|n', 'Patient complaints', 'Complaints system', 'Billed services the patient doesn\'t recall.']],
+      models: [['iforest', 'Unusual combinations of volume, value and code mix.'],
+               ['lof', 'Odd compared with the local peer group.'],
+               ['robustcov', 'A robust distance on a few billing ratios.']],
+      act: 'Send the top-ranked providers for desk review with the variables that made them stand out; confirmed findings become labels.' },
+
+    /* ================================================================ B  Banking & payments */
+    { id: 'credit-default', ind: 'banking', shape: 'risk', name: 'Loan default (probability of default)', rows: 'm', pri: [0.35, 0.5, 0.15],
+      q: 'How likely is this applicant to default within twelve months of taking the loan?',
+      cols: ['application_date|t', 'application_id|i', 'income|n*', 'debt_to_income|n*', 'credit_history_months|n', 'delinquencies_24m|n*', 'loan_amount|n', 'term_months|c', 'purpose|c', 'employment_type|c', 'defaulted_12m|Y'],
+      sig: [['bureau_score|n*', 'Credit bureau data', 'Credit bureaus', 'Other lenders\' experience with the applicant.'],
+            ['cashflow_volatility|n*', 'Open-banking cash flow', 'Account data shared by the applicant', 'Income stability and spending seen directly, useful for thin credit files.'],
+            ['unemployment_rate|n', 'Macro conditions', 'Statistics office', 'Defaults rise with unemployment; needed for stress testing.']],
+      models: [['logreg', 'The scorecard: binned features and coefficients a regulator can audit.'],
+               ['lgbm', 'More accurate challenger model, explained with SHAP, often with monotone constraints.'],
+               ['catboost', 'Many categorical fields with little tuning.']],
+      act: 'Approve below a PD cut-off and price the rest by expected loss; the cut-off comes from the bank\'s appetite and the margin.',
+      tex: T`\mathrm{EL} = \mathrm{PD}\times\mathrm{LGD}\times\mathrm{EAD},\qquad \text{approve if } \mathrm{PD} < \frac{\text{margin}}{\text{margin} + \mathrm{LGD}}`,
+      metrics: ['auc', 'brier', 'logloss'],
+      watch: 'Only approved loans have outcomes (reject inference), and lending law forbids some variables and their proxies. Test for disparate impact before use.' },
+
+    { id: 'card-fraud', ind: 'banking', shape: 'outlier', name: 'Card transaction fraud', rows: 'xl',
+      q: 'Is this card payment unlike the cardholder\'s normal behaviour?',
+      cols: ['txn_id|i', 'amount|n*', 'merchant_category|c', 'country|c', 'hour_of_day|n', 'km_from_home|n*', 'card_present|b', 'is_fraud|Y'],
+      sig: [['amount_vs_avg|n*', 'Customer baseline', 'The customer\'s own history', 'This amount divided by their usual amount: fraud is unusual for the person, not in general.'],
+            ['txns_last_hour|n*', 'Velocity', 'Transaction stream', 'Several payments in minutes.'],
+            ['device_new|b', 'New device or IP', 'Digital channels', 'First time seen.']],
+      models: [['iforest', 'Rare combinations without waiting for labels.'],
+               ['lof', 'Odd for the customer\'s neighbourhood of behaviour.'],
+               ['robustcov', 'Fast robust distance on a few ratios.']],
+      act: 'Approve, ask for a second factor, or decline by score band; set the bands so expected fraud loss plus friction cost is lowest.',
+      tex: T`\text{decline if } \hat s\cdot v > c_{\text{friction}}`,
+      watch: 'Labelled fraud is plentiful in card data, so the strongest production systems are supervised (task: binary, LightGBM) on top of these behaviour features.' },
+
+    { id: 'aml', ind: 'banking', shape: 'outlier', name: 'Anti-money-laundering monitoring', rows: 'l',
+      q: 'Which accounts move money in ways unlike similar customers?',
+      cols: ['account_id|i', 'inflow_30d|n*', 'outflow_30d|n*', 'cash_deposits_30d|n*', 'counterparties_30d|n', 'cross_border_share|n', 'segment|c', 'sar_filed|Y'],
+      sig: [['high_risk_country_share|n*', 'Counterparty geography', 'Payment messages', 'Flows to high-risk jurisdictions.'],
+            ['network_degree|n', 'Transaction network', 'Graph of payments', 'Accounts in dense rings of transfers.']],
+      models: [['iforest', 'Unusual flow profiles within each segment.'],
+               ['lof', 'Local peer comparison.'],
+               ['robustcov', 'Robust distance on flow ratios.']],
+      act: 'Rank alerts for investigators by score and send the top of the list; tune it to cut false positives without missing what rules already find.' },
+
+    { id: 'atm-cash', ind: 'banking', shape: 'demand', name: 'ATM cash demand', freq: 'D', h: 14, rows: 'm',
+      q: 'How much cash will each ATM dispense per day over the next two weeks?',
+      cols: ['date|t', 'atm_id|g', 'withdrawn|y', 'is_payday|b+*', 'is_holiday|b+'],
+      sig: [['local_event|b+', 'Local events', 'City calendars', 'Markets, fairs and festivals.'],
+            ['tourist_season|b+', 'Tourism', 'Tourism calendar', 'Resort ATMs triple in summer.']],
+      models: [['lgbm', 'All ATMs together; paydays and holidays known ahead.'],
+               ['ets', 'Per-ATM baseline.'],
+               ['prophet', 'Weekly, monthly and yearly cycles per machine.']],
+      act: 'Plan cash-in-transit visits so the ATM runs out with probability below a target, trading idle cash cost against visit cost.',
+      tex: T`\text{load} = \hat q_{0.98}\Big(\textstyle\sum_{d \le \text{next visit}} y_d\Big)` },
+
+    { id: 'next-product', ind: 'banking', shape: 'triage', name: 'Next product to offer', rows: 'm',
+      q: 'Which product is this customer most likely to take next?',
+      cols: ['customer_id|i', 'age|n', 'balance|n*', 'products_held|n*', 'income_band|c', 'digital_active|b', 'tenure_years|n', 'next_product|L'],
+      sig: [['life_event|c*', 'Life events', 'Transactions (rent, nursery, salary change)', 'Moving house or a new baby changes needs.'],
+            ['web_product_views|c', 'Browsing', 'Web analytics', 'Product pages visited recently.']],
+      models: [['lgbm', 'Multiclass over products with interactions.'],
+               ['logreg', 'Readable per product.'],
+               ['catboost', 'Categorical bands.']],
+      act: 'Show each customer the offer with the highest probability times margin, and none when all probabilities are low.',
+      tex: T`k^* = \arg\max_k\ \hat p_k\,m_k` },
+
+    { id: 'txn-category', ind: 'banking', shape: 'triage', name: 'Categorising card transactions', rows: 'l',
+      q: 'Which spending category does this transaction belong to: groceries, transport, rent, eating out…?',
+      cols: ['txn_id|i', 'merchant_text|x*', 'merchant_category_code|c*', 'amount|n', 'hour_of_day|n', 'recurring|b', 'category|L'],
+      sig: [['merchant_country|c', 'Merchant location', 'Card network data', 'Foreign merchants are often travel.'],
+            ['customer_overrides|c', 'Customer corrections', 'In-app recategorisations', 'What this customer chose for the same merchant last time.']],
+      models: [['logreg', 'TF-IDF on the cleaned merchant text plus the category code: fast and accurate.'],
+               ['lgbm', 'Text features with amount and time patterns.'],
+               ['nb', 'Rare categories with few examples.']],
+      act: 'Auto-categorise above a confidence level, let customers correct the rest, and learn from every correction.',
+      tex: T`\text{auto if } \max_k \hat p_k \ge 0.85` },
+
+    { id: 'call-volume', ind: 'banking', shape: 'load', name: 'Contact-centre call volume', freq: 'H', h: 168, rows: 'm',
+      q: 'How many calls will arrive in each half hour next week?',
+      cols: ['timestamp|t', 'queue|g', 'calls|y', 'is_holiday|b+'],
+      sig: [['statement_day|b+*', 'Statements and letters sent', 'Mailing schedule', 'Every mailing creates calls a few days later.'],
+            ['app_incident|b', 'App outages', 'Incident log', 'Outages send customers to the phone.'],
+            ['campaign|b+', 'Marketing campaigns', 'Marketing plan', 'Offers create questions.']],
+      models: [['lgbm', 'Hour-of-week patterns with the bank\'s own calendar.'],
+               ['prophet', 'Several seasonalities with holidays.'],
+               ['ets', 'Per-queue baseline.']],
+      act: 'Turn calls per half hour into agents needed for the service level (Erlang C), then build shifts.',
+      tex: T`n_h = \min\{\,n : \mathrm{SL}(n,\ \hat y_h,\ \bar s) \ge 80\%\text{ in } 20\,\text{s}\,\}` },
+
+    { id: 'collections', ind: 'banking', shape: 'propensity', name: 'Collections: who pays without a call', rows: 'm',
+      q: 'Which customers who have missed a payment will catch up on their own within 30 days?',
+      cols: ['account_id|i', 'days_past_due|n*', 'balance|n', 'prior_cures|n*', 'payment_ratio_3m|n*', 'contact_success_rate|n', 'product|c', 'cured_30d|Y'],
+      sig: [['salary_received|b*', 'Salary received', 'Account transactions', 'Money arriving makes payment likely.'],
+            ['hardship_flag|b', 'Hardship signals', 'Customer contact notes', 'They need help, not reminders.']],
+      models: [['lgbm', 'Payment history and balance interact.'],
+               ['logreg', 'Readable and stable.']],
+      act: 'Leave likely self-curers with a gentle reminder, call the middle band, and offer payment plans to those showing hardship.' },
+
+    { id: 'liquidity', ind: 'banking', shape: 'load', name: 'Daily net cash outflow (liquidity)', freq: 'D', h: 30, rows: 's',
+      q: 'How much cash will flow out of the bank each day over the next month?',
+      cols: ['date|t', 'net_outflow_m|y', 'is_month_end|b+*', 'is_holiday|b+'],
+      sig: [['payroll_day|b+*', 'Payroll and tax dates', 'Calendars', 'Corporate payrolls and tax payments are known well ahead.'],
+            ['rate_change|b+', 'Policy rate decisions', 'Central bank calendar', 'Deposits move after rate changes.'],
+            ['stress_idx|n', 'Market stress', 'Financial stress indices', 'Outflows jump in stress.']],
+      models: [['arima', 'SARIMAX with calendar regressors: the treasury standard.'],
+               ['lgbm', 'Non-linear calendar effects.'],
+               ['ets', 'Baseline.']],
+      act: 'Hold a liquidity buffer to the 99th percentile of cumulative outflows over the horizon.',
+      tex: T`\text{buffer} = \hat q_{0.99}\Big(\textstyle\sum_{d=1}^{30} y_{T+d}\Big)` },
+
+    { id: 'bank-segments', ind: 'banking', shape: 'segment', name: 'Customer financial behaviour segments', rows: 'm',
+      q: 'Which groups of customers manage their money in similar ways?',
+      cols: ['customer_id|i', 'avg_balance|n*', 'salary_inflow|n', 'card_spend|n*', 'savings_rate|n*', 'overdraft_days|n', 'digital_share|n'],
+      sig: [['spend_categories|n', 'Spending mix', 'Card transactions', 'Shares of spend by category.'],
+            ['age|n', 'Life stage', 'Customer records', 'Use with care.']],
+      models: [['kmeans', 'Clear, nameable centroids.'],
+               ['gmm', 'Soft membership.'],
+               ['agglo', 'A hierarchy for broad and fine segments.']],
+      act: 'Design products and messages per segment, and treat movement between segments (savers becoming overdrawn) as an early warning.' },
+
+    /* ================================================================ I  Insurance */
+    { id: 'claim-frequency', ind: 'insurance', shape: 'value', name: 'Claim frequency for pricing', rows: 'l', pri: [0.4, 0.45, 0.15],
+      q: 'How many claims per year should we expect from this policy?',
+      cols: ['policy_id|i', 'driver_age|n*', 'vehicle_group|c*', 'region|c*', 'bonus_malus|n*', 'vehicle_age|n', 'exposure_years|n', 'claim_count|y'],
+      sig: [['telematics_score|n*', 'Telematics', 'App or black box', 'Harsh braking, night driving and speed: behaviour beats demographics.'],
+            ['crime_rate|n', 'Area statistics', 'Police data', 'Theft and vandalism by postcode.']],
+      models: [['glm', 'Poisson GLM with a log link: the industry standard, filed with regulators.'],
+               ['lgbm', 'Poisson objective; finds interactions the GLM misses.'],
+               ['catboost', 'Many rating factors as categories.']],
+      act: 'Pure premium is frequency times severity; load it for expenses and profit, and keep the GLM structure where regulators require it.',
+      tex: T`\text{premium} = \hat\lambda\,(\mathbf x)\cdot \widehat{\text{severity}}(\mathbf x)\cdot(1 + \ell),\qquad \log\hat\lambda = \log e + \mathbf x^\top\boldsymbol\beta`,
+      feats: ['onehot', 'target-enc', 'interactions'], metrics: ['mae', 'rmse'],
+      watch: 'Exposure differs by policy: model counts with log(exposure) as an offset, or divide and use exposure as a weight.' },
+
+    { id: 'claim-severity', ind: 'insurance', shape: 'value', name: 'Claim severity', rows: 'm',
+      q: 'If this policy has a claim, how large will it be?',
+      cols: ['claim_id|i', 'vehicle_value|n*', 'driver_age|n', 'region|c', 'cover_type|c*', 'injury|b*', 'claim_amount|y'],
+      sig: [['repair_cost_idx|n', 'Repair cost inflation', 'Parts and labour indices', 'Severity follows repair prices.'],
+            ['legal_rep|b*', 'Legal representation', 'Claim file', 'Lawyers multiply injury claims.']],
+      models: [['lgbm', 'A gamma or Tweedie objective on the skewed amounts.'],
+               ['qgbm', 'Upper quantiles for reinsurance and reserving.'],
+               ['ridge', 'On log amounts: a stable, readable baseline.']],
+      act: 'Combine with frequency (case I.1) into the premium; use the upper quantiles to set reinsurance retentions.',
+      feats: ['log', 'onehot', 'target-enc'] },
+
+    { id: 'claims-fraud', ind: 'insurance', shape: 'outlier', name: 'Suspicious claims', rows: 'm',
+      q: 'Which new claims look unlike genuine ones?',
+      cols: ['claim_id|i', 'days_policy_to_claim|n*', 'claim_amount|n*', 'prior_claims|n', 'report_delay_days|n*', 'witness|b', 'repairer|c', 'confirmed_fraud|Y'],
+      sig: [['network_links|n*', 'Shared contacts', 'Claims database', 'Phones, addresses and repairers shared across claims: rings.'],
+            ['description_len|n', 'Description detail', 'Claim notes', 'Rehearsed or vague stories.']],
+      models: [['iforest', 'Rare combinations of timing, amount and history.'],
+               ['lof', 'Odd compared with similar claims.'],
+               ['robustcov', 'Robust distance on a few ratios.']],
+      act: 'Send the top-scoring claims to the special investigations unit, fast-track the low scores, and add outcomes as labels.' },
+
+    { id: 'lapse', ind: 'insurance', shape: 'propensity', name: 'Policy lapse at renewal', rows: 'm',
+      q: 'Which policyholders will not renew?',
+      cols: ['policy_id|i', 'tenure_years|n*', 'premium_change_pct|n*', 'claims_last_year|n', 'channel|c', 'products_held|n*', 'age|n', 'lapsed|Y'],
+      sig: [['market_price_gap|n*', 'Market prices', 'Comparison sites', 'How far the renewal price is above the market.'],
+            ['contact_last_90d|n', 'Service contacts', 'Contact centre', 'Recent complaints or questions.']],
+      models: [['lgbm', 'Price change and tenure interact.'],
+               ['logreg', 'Readable for pricing teams.'],
+               ['catboost', 'Channels and products.']],
+      act: 'Review renewal prices where lapse risk and value are both high, within the rules on fair pricing for existing customers.',
+      watch: 'Several markets ban charging loyal customers more than new ones; use the score for service and retention, not price walking.' },
+
+    { id: 'claims-triage', ind: 'insurance', shape: 'triage', name: 'Claims triage at first notice', rows: 'm',
+      q: 'From the first report, is this claim fast-track, standard or complex?',
+      cols: ['claim_id|i', 'first_notice|x*', 'line|c', 'injury|b*', 'estimated_amount|n*', 'third_party|b', 'complexity|L'],
+      sig: [['policy_age_days|n', 'Policy history', 'Policy system', 'New policies get more checks.'],
+            ['photos_count|n', 'Photos supplied', 'Claims app', 'Well-documented claims settle faster.']],
+      models: [['lgbm', 'Text features and claim facts together.'],
+               ['logreg', 'TF-IDF baseline.'],
+               ['catboost', 'Lines and types as categories.']],
+      act: 'Fast-track the simple claims automatically and send complex ones straight to senior handlers: both sides wait less.' },
+
+    { id: 'claims-reserve', ind: 'insurance', shape: 'demand', name: 'Monthly paid claims (reserving)', freq: 'M', h: 12, rows: 'xs',
+      q: 'How much will we pay out on claims each month over the next year, per line of business?',
+      cols: ['month|t', 'line|g', 'paid|y', 'policies_in_force|n+*'],
+      sig: [['claims_inflation|n', 'Claims inflation', 'Price indices', 'Repair and medical costs drift up.'],
+            ['cat_event|b', 'Catastrophes', 'Event log', 'Storms and floods create spikes.']],
+      models: [['ets', 'Per line, with trend and seasonality.'],
+               ['arima', 'SARIMAX with exposure.'],
+               ['lgbm', 'Global over lines.']],
+      act: 'Book reserves at the median and hold capital for the upper tail.',
+      watch: 'Chain-ladder on development triangles is the actuarial standard; use this as a cross-check, not a replacement.' },
+
+    { id: 'weather-surge', ind: 'insurance', shape: 'load', name: 'Weather-driven claims surge', freq: 'D', h: 7, rows: 's',
+      q: 'How many new claims will arrive per region over the next week, given the weather forecast?',
+      cols: ['date|t', 'region|g', 'new_claims|y', 'is_holiday|b+'],
+      sig: [['wind_gust_fcst|n+*', 'Wind gust forecast', 'Weather service', 'Roof and tree damage follow peak gusts.'],
+            ['rain_fcst_mm|n+*', 'Rainfall forecast', 'Weather service', 'Flooding.'],
+            ['warning_level|n+', 'Weather warnings', 'National warnings', 'Official warnings summarise the risk.']],
+      models: [['lgbm', 'The threshold effects of storms.'],
+               ['glm', 'Counts with weather regressors.'],
+               ['qgbm', 'The surge tail.']],
+      act: 'Pre-book loss adjusters and contractors in regions where the upper quantile of claims is above normal capacity.' },
+
+    { id: 'property-risk', ind: 'insurance', shape: 'risk', name: 'Property claim risk', rows: 'l',
+      q: 'How likely is this home to have a claim in the next year?',
+      cols: ['year|t', 'property_id|i', 'build_year|n', 'construction|c', 'flood_zone|c*', 'distance_to_water_m|n*', 'roof_age|n*', 'claim_next_year|Y'],
+      sig: [['climate_score|n*', 'Climate hazard scores', 'Climate data providers', 'Flood, wildfire and subsidence projections.'],
+            ['roof_condition|c', 'Roof condition', 'Aerial imagery model', 'An image model\'s grade becomes a column.']],
+      models: [['lgbm', 'Hazards and building features.'],
+               ['logreg', 'Readable rating factors.'],
+               ['catboost', 'Zones and construction types.']],
+      act: 'Price by risk, and offer discounts for resilience measures (new roof, flood barriers) that lower the score.' },
+
+    { id: 'policy-segments', ind: 'insurance', shape: 'segment', name: 'Policyholder segments', rows: 'm',
+      q: 'Which kinds of policyholders do we have, by cover, value and behaviour?',
+      cols: ['customer_id|i', 'premium|n*', 'policies|n*', 'tenure_years|n', 'claims_5y|n', 'digital_share|n'],
+      sig: [['age|n', 'Life stage', 'Policy records', 'Use with care.']],
+      models: [['kmeans', 'Clear profiles.'],
+               ['gmm', 'Soft membership.'],
+               ['hdbscan', 'Finds dense niche groups.']],
+      act: 'Shape service and cross-sell per segment; check fairness before any segment touches price.' },
+
+    { id: 'subrogation', ind: 'insurance', shape: 'propensity', name: 'Subrogation recovery potential', rows: 'm',
+      q: 'Which paid claims can we recover from a liable third party?',
+      cols: ['claim_id|i', 'claim_type|c*', 'third_party_involved|b*', 'police_report|b', 'paid_amount|n', 'notes|x*', 'recovered|Y'],
+      sig: [['third_party_insured|b', 'Third-party insurer known', 'Claim file', 'Recovery needs someone to recover from.']],
+      models: [['lgbm', 'Facts and note text together.'],
+               ['logreg', 'TF-IDF on notes, readable.']],
+      act: 'Pursue recovery where probability times amount beats legal cost.' },
+
+    /* ================================================================ C  Telecom & subscriptions */
+    { id: 'subscriber-churn', ind: 'telco', shape: 'propensity', name: 'Subscriber churn', rows: 'l',
+      q: 'Which subscribers will cancel or port out in the next month?',
+      cols: ['subscriber_id|i', 'tenure_months|n*', 'plan|c', 'monthly_charge|n', 'data_gb_30d|n', 'dropped_calls_30d|n*', 'support_calls_90d|n*', 'days_to_contract_end|n*', 'churned|Y'],
+      sig: [['home_cell_quality|n*', 'Network quality at home', 'Network KPIs by cell', 'Poor coverage where they live is a quiet reason to leave.'],
+            ['competitor_offer|b', 'Competitor offers', 'Market monitoring', 'A rival\'s new deal in the area.'],
+            ['nps|n', 'Satisfaction', 'Surveys', 'Detractors leave.']],
+      models: [['lgbm', 'Contract timing, usage and network quality together.'],
+               ['logreg', 'Readable for the retention team.'],
+               ['catboost', 'Plans, devices and regions.']],
+      act: 'Offer retention deals where the expected saved value beats their cost; fix network issues for whole clusters of at-risk subscribers.',
+      tex: T`\text{offer if } \hat p\cdot u\cdot \text{CLV} > c_{\text{offer}}`,
+      watch: 'Target the persuadable, not just the risky: measure with a random holdout.' },
+
+    { id: 'cell-traffic', ind: 'telco', shape: 'load', name: 'Cell traffic for capacity planning', freq: 'H', h: 168, rows: 'l',
+      q: 'How much data will each cell carry per hour next week?',
+      cols: ['timestamp|t', 'cell_id|g', 'traffic_gb|y', 'is_holiday|b+'],
+      sig: [['event_nearby|b+*', 'Events', 'Venue calendars', 'Stadiums and festivals saturate cells.'],
+            ['new_subscribers_area|n', 'Subscriber growth', 'CRM by area', 'New housing developments.'],
+            ['neighbour_outage|b', 'Neighbouring outages', 'Network operations', 'Traffic moves to the next cell.']],
+      models: [['lgbm', 'Thousands of cells in one global model.'],
+               ['tft', 'Multi-horizon quantiles per cell.'],
+               ['nbeats', 'Pure pattern model for long hourly histories.']],
+      act: 'Upgrade or add capacity where the 95th percentile of busy-hour traffic will exceed what the cell carries.',
+      tex: T`\text{upgrade if } \hat q_{0.95}(\text{busy hour}) > 0.8\times\text{capacity}` },
+
+    { id: 'cell-kpi-watch', ind: 'telco', shape: 'watch', name: 'Network KPI anomalies', freq: 'H', rows: 'l',
+      q: 'Is any cell\'s drop rate higher than usual for this hour?',
+      cols: ['timestamp|t', 'cell_id|g', 'drop_rate_pct|y'],
+      sig: [['config_change|b', 'Configuration changes', 'Network change log', 'Most degradations follow a change.'],
+            ['traffic_gb|n', 'Traffic', 'Network counters', 'High load raises drops normally.']],
+      models: [['stl', 'Per cell: daily and weekly cycles removed, robust z-score on what remains.'],
+               ['iforest', 'Several KPIs together.']],
+      act: 'Open a ticket for cells flagged several hours running, and roll back the last change if it lines up.' },
+
+    { id: 'ticket-routing', ind: 'telco', shape: 'triage', name: 'Support ticket routing', rows: 'm',
+      q: 'Which team should handle this support ticket?',
+      cols: ['ticket_id|i', 'subject|x*', 'body|x*', 'channel|c', 'plan|c', 'team|L'],
+      sig: [['recent_outage_area|b', 'Outage in their area', 'Network operations', 'Many tickets are an outage you already know about.'],
+            ['last_bill_change|n', 'Bill change', 'Billing', 'Billing questions after price changes.']],
+      models: [['logreg', 'TF-IDF on subject and body: fast and strong.'],
+               ['svm', 'A linear SVM text classifier.'],
+               ['nb', 'Little data.']],
+      act: 'Route automatically above a confidence level, and answer outage tickets with the outage message straight away.' },
+
+    { id: 'upgrade-propensity', ind: 'telco', shape: 'propensity', name: 'Plan upgrade propensity', rows: 'l',
+      q: 'Which subscribers would take a bigger plan if we offered it?',
+      cols: ['subscriber_id|i', 'plan|c', 'data_used_pct|n*', 'overage_charges_3m|n*', 'device_age_months|n', 'tenure_months|n', 'upgraded|Y'],
+      sig: [['video_share|n', 'Usage mix', 'Network DPI aggregates', 'Video-heavy users hit limits.'],
+            ['household_lines|n', 'Household', 'Account', 'Family plans.']],
+      models: [['lgbm', 'Usage near the cap is the key.'],
+               ['logreg', 'Readable.']],
+      act: 'Offer the upgrade just before the customer would hit their cap again.' },
+
+    { id: 'net-adds', ind: 'telco', shape: 'demand', name: 'Subscriber net additions', freq: 'M', h: 12, rows: 'xs',
+      q: 'How many subscribers will we gain or lose per month in each region over the next year?',
+      cols: ['month|t', 'region|g', 'net_adds|y', 'marketing_spend|n+*', 'price_change|b+'],
+      sig: [['competitor_launch|b+', 'Competitor launches', 'Market monitoring', 'New offers move share.'],
+            ['handset_launch|b+', 'Handset launches', 'Industry calendar', 'New phones bring switching.']],
+      models: [['ets', 'Short monthly histories: a robust baseline.'],
+               ['lgbm', 'Global over regions with marketing known ahead.'],
+               ['chronos', 'Zero-shot with very little history.']],
+      act: 'Set marketing budgets and targets by region from the median; plan the business case on the lower quantile.' },
+
+    { id: 'sim-fraud', ind: 'telco', shape: 'outlier', name: 'SIM-box and subscription fraud', rows: 'l',
+      q: 'Which SIM cards behave like a SIM box or a fraudulent subscription?',
+      cols: ['subscriber_id|i', 'calls_per_day|n*', 'distinct_callees|n*', 'intl_share|n*', 'avg_call_sec|n', 'cell_changes|n', 'sim_age_days|n', 'confirmed_fraud|Y'],
+      sig: [['imei_shared|n*', 'Shared devices', 'Network registers', 'Many SIMs cycling through one device.']],
+      models: [['iforest', 'Rare behaviour combinations.'],
+               ['lof', 'Odd within the local usage neighbourhood.'],
+               ['robustcov', 'Robust distance on call ratios.']],
+      act: 'Block or verify the top-scoring SIMs; confirmed cases become labels for a supervised model.' },
+
+    { id: 'cpe-failure', ind: 'telco', shape: 'risk', name: 'Home router failure', rows: 'l',
+      q: 'Which customer routers will fail in the next two weeks?',
+      cols: ['snapshot_date|t', 'device_id|i', 'model|c', 'age_months|n', 'reboots_7d|n*', 'temp_max_c|n', 'error_rate|n*', 'firmware|c', 'fails_14d|Y'],
+      sig: [['line_noise|n*', 'Line quality', 'Access network', 'Noisy lines look like device faults.'],
+            ['power_events|n', 'Power cuts', 'Device logs', 'Power surges damage hardware.']],
+      models: [['lgbm', 'Device telemetry and line quality.'],
+               ['rf', 'Robust baseline.']],
+      act: 'Ship a replacement before the failure for high-risk devices, saving a technician visit and a call.' },
+
+    { id: 'usage-segments', ind: 'telco', shape: 'segment', name: 'Usage segments', rows: 'l',
+      q: 'Which usage patterns do our subscribers fall into?',
+      cols: ['subscriber_id|i', 'data_gb|n*', 'voice_min|n', 'sms|n', 'roaming_days|n', 'night_share|n*', 'video_share|n'],
+      sig: [['device_tier|c', 'Device', 'Network registers', 'Device class shapes usage.']],
+      models: [['kmeans', 'Clear profiles on log-scaled usage.'],
+               ['gmm', 'Soft membership.'],
+               ['hdbscan', 'Finds niche groups.']],
+      act: 'Design plans for each segment and use them as groups in traffic forecasts.' },
+
+    { id: 'device-default', ind: 'telco', shape: 'risk', name: 'Device financing default', rows: 'm', pri: [0.4, 0.45, 0.15],
+      q: 'Will this customer stop paying the instalments on their phone?',
+      cols: ['contract_date|t', 'contract_id|i', 'device_price|n*', 'deposit_pct|n*', 'tenure_months|n*', 'late_payments_12m|n*', 'plan|c', 'defaulted|Y'],
+      sig: [['bureau_score|n*', 'Credit bureau', 'Credit bureaus', 'For new customers without history.']],
+      models: [['logreg', 'Regulated lending: an auditable scorecard.'],
+               ['lgbm', 'Challenger model.']],
+      act: 'Ask for a larger deposit or a cheaper device above a risk threshold.' },
+
+    /* ================================================================ A  Agriculture & food */
+    { id: 'crop-yield', ind: 'agri', shape: 'quality', name: 'Crop yield per field', rows: 's',
+      q: 'What yield will each field give this season, and where would more fertiliser pay?',
+      cols: ['field_id|i', 'crop|c', 'soil_type|c', 'n_kg_ha|n*', 'rain_season_mm|n*', 'gdd|n*', 'sowing_doy|n', 'yield_t_ha|y'],
+      sig: [['ndvi_peak|n*', 'Satellite vegetation index', 'Sentinel-2 / Landsat', 'Canopy greenness mid-season predicts yield weeks before harvest.'],
+            ['soil_organic_pct|n', 'Soil tests', 'Lab results', 'Organic matter and pH.'],
+            ['seasonal_rain_fcst|n', 'Seasonal forecast', 'Weather service', 'Expected rain for the rest of the season.']],
+      models: [['lgbm', 'Non-linear responses to weather and inputs.'],
+               ['rf', 'Robust with a few hundred field-years.'],
+               ['gp', 'Smooth response curves with uncertainty.'],
+               ['ridge', 'Readable agronomic baseline.']],
+      act: 'Add fertiliser where the predicted yield gain times the crop price beats the fertiliser cost.',
+      tex: T`\text{apply if } \frac{\partial \hat y}{\partial N}\,p_{\text{crop}} > p_N`,
+      val: 'group',
+      watch: 'Fields repeat across years: split by field (or by year), not by row, or the model memorises the field.' },
+
+    { id: 'mastitis', ind: 'agri', shape: 'risk', name: 'Dairy cow health (mastitis risk)', rows: 'm',
+      q: 'Which cows are likely to develop mastitis in the next week?',
+      cols: ['date|t', 'cow_id|i', 'parity|n', 'days_in_milk|n*', 'milk_change_7d_pct|n*', 'conductivity|n*', 'activity_change_pct|n', 'mastitis_7d|Y'],
+      sig: [['somatic_cell_count|n*', 'Somatic cell count', 'Milk recording', 'The classic indicator.'],
+            ['heat_stress_idx|n', 'Heat stress', 'Barn sensors / weather', 'Temperature and humidity weaken immunity.']],
+      models: [['lgbm', 'Sensor changes and their interactions.'],
+               ['logreg', 'Readable for the vet.']],
+      act: 'Check and treat flagged cows early; earlier treatment means less milk thrown away and fewer antibiotics.' },
+
+    { id: 'fresh-food', ind: 'agri', shape: 'demand', name: 'Fresh food demand and waste', freq: 'D', h: 7, rows: 'm',
+      q: 'How much of each fresh product will each shop sell per day next week?',
+      cols: ['date|t', 'shop_id|g', 'product|c', 'units|y', 'promo|b+*', 'is_holiday|b+'],
+      sig: [['temp_fcst_c|n+*', 'Weather forecast', 'Weather API', 'Salads in the heat, soups in the cold.'],
+            ['footfall_fcst|n+', 'Expected footfall', 'Case R.8', 'Fewer visitors, fewer sales.']],
+      models: [['lgbm', 'All shops and products together.'],
+               ['qgbm', 'The quantile that balances waste and empty shelves.'],
+               ['ets', 'Per-series baseline.']],
+      act: 'Bake or order up to the newsvendor quantile; with a one-day shelf life the cost of waste pulls it low.',
+      tex: T`Q^* = \hat F^{-1}\Big(\frac{p - c}{p - s}\Big),\quad s = \text{salvage value}` },
+
+    { id: 'soil-moisture', ind: 'agri', shape: 'load', name: 'Soil moisture for irrigation', freq: 'D', h: 7, rows: 's',
+      q: 'What will soil moisture be in each field over the next week, and when should we irrigate?',
+      cols: ['date|t', 'field_id|g', 'soil_moisture_pct|y', 'irrigation_mm|n+*'],
+      sig: [['rain_fcst_mm|n+*', 'Rain forecast', 'Weather API', 'Don\'t irrigate before rain.'],
+            ['et0_fcst_mm|n+*', 'Evapotranspiration forecast', 'Weather API (FAO-56)', 'How fast the crop and soil lose water.'],
+            ['crop_stage|c', 'Crop stage', 'Farm records', 'Water needs change with growth stage.']],
+      models: [['lgbm', 'Weather and irrigation as known-ahead drivers.'],
+               ['arima', 'SARIMAX with rain and ET₀ per field.'],
+               ['linreg', 'A water-balance baseline.']],
+      act: 'Irrigate the day before the forecast moisture would fall below the stress threshold, by the amount that brings it back to field capacity.',
+      tex: T`\text{irrigate on } d \text{ if } \hat m_{d+1} < m_{\text{stress}}` },
+
+    { id: 'harvest-timing', ind: 'agri', shape: 'duration', name: 'Days to harvest maturity', rows: 's',
+      q: 'How many days until this block is ready to harvest?',
+      cols: ['sample_date|t', 'block_id|i', 'variety|c*', 'gdd_to_date|n*', 'brix|n*', 'firmness|n', 'days_to_harvest|y'],
+      sig: [['temp_fcst_c|n*', 'Temperature forecast', 'Weather API', 'Warm weeks ripen fast.']],
+      models: [['lgbm', 'Ripening is non-linear in heat units.'],
+               ['qgbm', 'An earliest and latest date to book crews.'],
+               ['gp', 'Smooth curves with few samples.']],
+      act: 'Book pickers and transport for the predicted window, and re-sample blocks near the edge of it.' },
+
+    { id: 'produce-grade', ind: 'agri', shape: 'triage', name: 'Produce quality grading', rows: 's',
+      q: 'Which quality grade will this lot get?',
+      cols: ['lot_id|i', 'variety|c', 'weight_g|n', 'sugar_brix|n*', 'firmness|n*', 'colour_idx|n', 'defects_pct|n*', 'grade|L'],
+      sig: [['image_score|n', 'Camera score', 'An image model', 'Surface defects from a vision model.'],
+            ['days_in_storage|n', 'Storage time', 'Warehouse', 'Quality falls in storage.']],
+      models: [['lgbm', 'Measurements with thresholds.'],
+               ['rf', 'Robust with small data.'],
+               ['logreg', 'Readable.']],
+      act: 'Grade automatically and send borderline lots to a person.' },
+
+    { id: 'commodity-price', ind: 'agri', shape: 'demand', name: 'Commodity price', freq: 'W', h: 12, rows: 'xs',
+      q: 'Where is the price of wheat (or milk, or coffee) heading over the next three months?',
+      cols: ['week|t', 'price|y', 'stocks_to_use|n*', 'usd_index|n'],
+      sig: [['crop_condition|n*', 'Crop condition reports', 'Agriculture department reports', 'Expected supply.'],
+            ['freight_idx|n', 'Freight costs', 'Shipping indices', 'Export competitiveness.']],
+      models: [['arima', 'Prices are close to a random walk: an honest baseline.'],
+               ['var', 'Price, stocks and currency move together.'],
+               ['lgbm', 'Non-linear supply effects.']],
+      act: 'Hedge a share of next season\'s purchases when the forecast and its interval favour it.',
+      watch: 'Markets price in public information quickly; expect intervals wide enough to be humbling.' },
+
+    { id: 'cold-room', ind: 'agri', shape: 'watch', name: 'Cold-room temperature monitoring', freq: 'H', rows: 's',
+      q: 'Is a cold room warmer than it normally is at this time?',
+      cols: ['timestamp|t', 'room_id|g', 'temp_c|y'],
+      sig: [['door_open_min|n', 'Door openings', 'Door sensors', 'Normal loading explains short rises.'],
+            ['defrost|b', 'Defrost cycles', 'Controller', 'Scheduled defrosts are expected.']],
+      models: [['stl', 'Removes daily cycles (loading, defrost) per room.'],
+               ['iforest', 'Temperature with door and defrost context.']],
+      act: 'Alert maintenance when the residual stays high for an hour; move stock if it keeps rising.' },
+
+    { id: 'pest-risk', ind: 'agri', shape: 'risk', name: 'Pest and disease outbreak risk', rows: 's',
+      q: 'Which fields are likely to see a disease outbreak in the next two weeks?',
+      cols: ['date|t', 'field_id|i', 'crop|c', 'humidity_7d|n*', 'leaf_wetness_h|n*', 'temp_7d|n', 'neighbour_reports|n*', 'outbreak_14d|Y'],
+      sig: [['trap_counts|n*', 'Insect traps', 'Trap networks', 'Counts rise before damage.'],
+            ['variety_resistance|c', 'Variety resistance', 'Seed catalogue', 'Susceptible varieties first.']],
+      models: [['lgbm', 'Weather thresholds and neighbourhood pressure.'],
+               ['logreg', 'Readable and close to classic disease models.']],
+      act: 'Spray when the probability times the expected crop loss beats the cost of spraying.',
+      tex: T`\text{spray if } \hat p\,L_{\text{crop}} > c_{\text{spray}}` },
+
+    { id: 'farm-segments', ind: 'agri', shape: 'segment', name: 'Farm customer segments', rows: 's',
+      q: 'Which kinds of farms buy from us, so advice and offers fit each one?',
+      cols: ['farm_id|i', 'hectares|n*', 'crop_share_cereal|n', 'livestock_units|n*', 'spend_inputs|n*', 'orders_per_year|n'],
+      sig: [['region_rain|n', 'Climate zone', 'Weather records', 'Wet and dry regions farm differently.']],
+      models: [['kmeans', 'Clear profiles.'],
+               ['gmm', 'Mixed farms belong partly to two groups.'],
+               ['agglo', 'A hierarchy of farm types.']],
+      act: 'Give each segment its own agronomist advice, product bundles and visit frequency.' },
+
+    /* ================================================================ T  Travel & hospitality */
+    { id: 'room-demand', ind: 'travel', shape: 'demand', name: 'Hotel room demand', freq: 'D', h: 60, rows: 'm',
+      q: 'How many rooms will be sold for each night over the next two months?',
+      cols: ['stay_date|t', 'hotel_id|g', 'rooms_sold|y', 'is_holiday|b+'],
+      sig: [['on_books_rooms|n+*', 'Rooms on the books (pickup)', 'Property management system', 'Bookings already made for that night. The pace of pickup is the best predictor revenue managers have.'],
+            ['city_event|b+*', 'City events', 'Convention and event calendars', 'Trade fairs fill every hotel in town.'],
+            ['flight_searches|n', 'Flight searches', 'Travel search data', 'Interest in the destination.'],
+            ['competitor_rate|n+', 'Competitor rates', 'Rate shopping tools', 'Your price relative to the market.']],
+      models: [['lgbm', 'Pickup curves across nights and hotels.'],
+               ['tft', 'Quantiles for every night with bookings known ahead.'],
+               ['ets', 'A baseline per hotel.']],
+      act: 'Raise rates when forecast demand nears capacity, close discount channels, and set the overbooking level from cancellations (case T.2).',
+      watch: 'Sold rooms are capped at capacity, so true demand on sold-out nights is hidden. Record turn-aways or denials.' },
+
+    { id: 'cancellation', ind: 'travel', shape: 'risk', name: 'Booking cancellation', rows: 'l',
+      q: 'Which bookings will be cancelled before arrival?',
+      cols: ['booked_at|t', 'booking_id|i', 'lead_time_days|n*', 'channel|c*', 'deposit_type|c*', 'rate|n', 'nights|n', 'prior_cancellations|n', 'special_requests|n', 'canceled|Y'],
+      sig: [['rate_drop_since_booking|n*', 'Price drops since booking', 'Rate shopping', 'Guests rebook cheaper elsewhere.'],
+            ['flight_booked|b', 'Flight booked', 'Package bookings', 'Committed travellers.']],
+      models: [['lgbm', 'Lead time, channel and deposit interact.'],
+               ['catboost', 'Channels and countries.'],
+               ['logreg', 'Readable.']],
+      act: 'Overbook each night by the expected cancellations minus a safety margin for the cost of walking a guest.',
+      tex: T`\text{overbook}_n = \Big\lfloor \sum_{i\in n} \hat p_i - z\sqrt{\textstyle\sum_i \hat p_i (1-\hat p_i)}\Big\rfloor` },
+
+    { id: 'room-rate', ind: 'travel', shape: 'value', name: 'Achievable room rate', rows: 'm',
+      q: 'What rate will this room type sell at for a given night and booking window?',
+      cols: ['hotel_id|c', 'room_type|c*', 'stay_weekday|c', 'lead_time_days|n*', 'occupancy_on_books_pct|n*', 'event|b', 'rate|y'],
+      sig: [['competitor_rate|n*', 'Competitor rates', 'Rate shopping', 'The market price for the same night.'],
+            ['search_demand|n', 'Search demand', 'Booking engine / metasearch', 'Lookers for that night.']],
+      models: [['lgbm', 'Non-linear in occupancy and lead time.'],
+               ['qgbm', 'A floor and a ceiling for the rate.'],
+               ['catboost', 'Room types and hotels.']],
+      act: 'Set the price within the predicted range, higher as on-the-books occupancy climbs.',
+      watch: 'This predicts achieved rates, not the effect of changing price: to learn elasticity, test prices.' },
+
+    { id: 'restaurant-covers', ind: 'travel', shape: 'load', name: 'Restaurant covers per day', freq: 'D', h: 14, rows: 's',
+      q: 'How many guests will each restaurant serve per day over the next two weeks?',
+      cols: ['date|t', 'restaurant|g', 'covers|y', 'is_holiday|b+'],
+      sig: [['reservations_on_books|n+*', 'Reservations on the books', 'Booking system', 'Walk-ins are a share of booked covers.'],
+            ['rain_fcst_mm|n+*', 'Weather forecast', 'Weather API', 'Terraces and walk-ins follow the weather.'],
+            ['local_event|b+', 'Local events', 'Event listings', 'Concerts nearby.']],
+      models: [['lgbm', 'Bookings plus weather across all sites.'],
+               ['prophet', 'Weekly and yearly seasonality.'],
+               ['ets', 'Per-site baseline.']],
+      act: 'Plan prep quantities and staff from the forecast; prep perishables to the median, staples to an upper quantile.' },
+
+    { id: 'passenger-noshow', ind: 'travel', shape: 'propensity', name: 'Passenger no-show', rows: 'l',
+      q: 'Which booked passengers won\'t turn up for the flight?',
+      cols: ['booking_id|i', 'fare_class|c*', 'days_booked_ahead|n*', 'connecting|b*', 'group_size|n', 'refundable|b', 'checked_in|b*', 'no_show|Y'],
+      sig: [['inbound_delay_min|n*', 'Connecting flight delay', 'Operations', 'Late inbound connections create misconnects.']],
+      models: [['lgbm', 'Fare rules and connections interact.'],
+               ['logreg', 'Readable.']],
+      act: 'Overbook each flight by expected no-shows, capped by the cost of denied boarding.' },
+
+    { id: 'review-topics', ind: 'travel', shape: 'triage', name: 'Guest review topics', rows: 'm',
+      q: 'What is this review mainly about: cleanliness, staff, noise, food, value?',
+      cols: ['review_id|i', 'text|x*', 'property|c', 'rating|n', 'topic|L'],
+      sig: [['stay_length|n', 'Stay details', 'Booking', 'Long stays notice different things.']],
+      models: [['logreg', 'TF-IDF baseline.'],
+               ['svm', 'A strong linear text classifier.'],
+               ['nb', 'Little labelled data.']],
+      act: 'Send each topic to the manager who owns it, and track topic counts per property over time.' },
+
+    { id: 'guest-segments', ind: 'travel', shape: 'segment', name: 'Guest segments', rows: 'm',
+      q: 'Which types of guests do we have, by when and how they book and spend?',
+      cols: ['guest_id|i', 'stays_12m|n*', 'avg_lead_days|n', 'avg_nights|n', 'weekday_share|n*', 'spend_per_night|n*', 'channel|c'],
+      sig: [['party_size|n', 'Party size', 'Bookings', 'Families versus solo travellers.']],
+      models: [['kmeans', 'Business, leisure, family: nameable profiles.'],
+               ['gmm', 'Soft membership.'],
+               ['hdbscan', 'Niche groups such as crews or long stays.']],
+      act: 'Tailor offers and channels per segment.' },
+
+    { id: 'conversion-watch', ind: 'travel', shape: 'watch', name: 'Booking engine conversion watch', freq: 'H', rows: 'm',
+      q: 'Is the booking engine converting worse than usual right now?',
+      cols: ['timestamp|t', 'channel|g', 'conversion_pct|y'],
+      sig: [['release|b', 'Releases', 'Deployment log', 'Many drops follow a release.'],
+            ['payment_errors|n', 'Payment errors', 'Payment gateway', 'A failing payment provider.']],
+      models: [['stl', 'Per channel, daily and weekly cycles removed.'],
+               ['iforest', 'Conversion with errors and releases.']],
+      act: 'Alert when conversion sits below expectation for two hours; check payments and the last release first.' },
+
+    { id: 'flight-delay', ind: 'travel', shape: 'duration', name: 'Flight arrival delay', rows: 'l',
+      q: 'How late will this flight arrive?',
+      cols: ['sched_dep|t', 'flight_id|i', 'carrier|c', 'origin|c*', 'dest|c', 'dep_hour|n', 'distance_km|n', 'inbound_delay_min|n*', 'arr_delay_min|y'],
+      sig: [['dest_weather_fcst|n*', 'Airport weather', 'METAR / TAF forecasts', 'Fog, storms and wind at either end.'],
+            ['atc_restriction|b*', 'Air traffic restrictions', 'Flow management notices', 'Slots and ground delay programmes.']],
+      models: [['qgbm', 'Median and P90 delay.'],
+               ['lgbm', 'Point estimate with delay propagation.'],
+               ['catboost', 'Airports and carriers.']],
+      act: 'Reassign crews, gates and connections when the P90 delay would break them.' },
+
+    { id: 'add-on-upsell', ind: 'travel', shape: 'propensity', name: 'Upgrade and add-on take-up', rows: 'm',
+      q: 'Which guests would buy an upgrade, breakfast or late checkout if offered?',
+      cols: ['booking_id|i', 'room_type|c', 'rate|n', 'nights|n', 'lead_time_days|n*', 'purpose|c*', 'loyalty_tier|c', 'took_offer|Y'],
+      sig: [['prior_upgrades|n*', 'Past purchases', 'Guest history', 'Past buyers buy again.']],
+      models: [['lgbm', 'Rate, purpose and history.'],
+               ['logreg', 'Readable.']],
+      act: 'Show the offer with the highest probability times margin in the pre-arrival email.' }
+  ];
+
+  /* ------------------------------------------------------------------ derived */
+  var ROLE = { t: ['datetime', 'time'], g: ['categorical', 'group'], y: ['numeric', 'target'], Y: ['boolean', 'target'], L: ['categorical', 'target'],
+               n: ['numeric', 'feature'], c: ['categorical', 'feature'], b: ['boolean', 'feature'], x: ['text', 'feature'], d: ['datetime', 'feature'], i: ['id', 'ignore'] };
+  RI.caseColumn = function (s) {
+    var p = String(s).split('|'), code = p[1] || 'n', r = ROLE[code.replace(/[*+]/g, '')] || ROLE.n;
+    return { name: p[0], type: r[0], role: r[1], key: code.indexOf('*') >= 0, known: code.indexOf('+') >= 0 };
+  };
+  RI.CASE = {};
+  var perInd = {};
+  RI.CASES.forEach(function (c, i) {
+    var sh = RI.SHAPES[c.shape], ind = RI.INDUSTRY[c.ind];
+    perInd[c.ind] = (perInd[c.ind] || 0) + 1;
+    c.idx = i;
+    c.no = ind.letter + '.' + perInd[c.ind];
+    c.task = c.task || sh.task;
+    c.feats = c.feats || sh.feats;
+    c.val = c.val === undefined ? sh.val : c.val;
+    c.metrics = c.metrics || sh.metrics;
+    c.rows = c.rows || sh.rows;
+    c.intervals = c.intervals === undefined ? !!sh.intervals : c.intervals;
+    c.sig = c.sig || [];
+    RI.CASE[c.id] = c;
+  });
+  /* The Lab spec for a case. off = {signal index: true} for the signals left out. */
+  RI.caseSpec = function (c, off) {
+    off = off || {};
+    var cols = c.cols.concat(c.sig.filter(function (s, i) { return !off[i]; }).map(function (s) { return s[0]; })).map(RI.caseColumn);
+    var pri = c.pri || [0.5, 0.25, 0.25];
+    return RI.cleanSpec({ columns: cols, task: c.task, freq: c.freq || 'D', horizon: c.h || 14, rows: c.rows,
+      weights: { acc: pri[0], interp: pri[1], speed: pri[2] }, intervals: c.intervals, missing: false, file: c.id.replace(/-/g, '_') + '.csv' });
+  };
+  /* Cases that list a model, best placed first: [{c, rank}] */
+  RI.casesFor = function (slug) {
+    var out = [];
+    RI.CASES.forEach(function (c) { c.models.forEach(function (m, r) { if (m[0] === slug) out.push({ c: c, rank: r }); }); });
+    return out.sort(function (a, b) { return a.rank - b.rank || a.c.idx - b.c.idx; });
+  };
 })();
 
 /* ===== _engine.html ===== */
@@ -2894,8 +4229,17 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
       '<p class="small muted" style="margin:10px 0 0">Data: ' + ({ xs: 'works from a few hundred rows', s: 'wants 1k+ rows', m: 'wants 10k+ rows', l: 'wants 100k+ rows' }[m.minRows] || '') +
         (m.maxRows !== 'xl' ? '; slow beyond ' + { s: '10k', m: '100k', l: '1M' }[m.maxRows] + ' rows' : '') + '.</p></div>' +
       '<button class="ui-btn primary block" data-use="' + m.slug + '">' + UI.icon('flask') + 'Use it in the Lab</button>' +
+      casebook(m) +
       (m.related.length ? '<div class="ui-card"><h4>Related</h4><div class="ui-stack" style="font-size:.95rem">' + m.related.map(function (s) { var r = RI.MODEL[s]; return r ? '<div><a href="#atlas/model/' + s + '">' + esc(r.name) + '</a></div>' : ''; }).join('') + '</div></div>' : '') +
       '</aside></div></div>';
+  }
+  /* The Casebook situations that list this model (best-placed first) */
+  function casebook(m) {
+    var hits = RI.casesFor ? RI.casesFor(m.slug) : [];
+    if (!hits.length) return '';
+    return '<div class="ui-card at-cases"><h4>In the Casebook</h4><div class="ui-stack" style="font-size:.92rem">' + hits.slice(0, 6).map(function (h) {
+      return '<a href="#cases/' + h.c.ind + '/' + h.c.id + '"><span class="no">' + h.c.no + '</span>' + esc(h.c.name) + (h.rank === 0 ? ' <span class="top" title="First choice in this case">1st</span>' : '') + '</a>';
+    }).join('') + '</div>' + '<a class="small" href="#cases/model/' + m.slug + '">' + (hits.length > 6 ? 'All ' + hits.length + ' cases' : 'Show them in the Casebook') + ' ' + UI.icon('arrow') + '</a></div>';
   }
   function simplePage(kind, x, list) {
     var i = list.indexOf(x), prev = list[i - 1], next = list[i + 1];
@@ -3021,6 +4365,247 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     function restore(v) {
       ['name', 'email'].forEach(function (k) { var i = view.querySelector('[name=' + k + ']'); if (i && v[k]) i.value = v[k]; });
     }
+    draw();
+  });
+})();
+
+/* ===== cases.html ===== */
+(function () {
+  var esc = UI.esc;
+
+  function caseUrl(c) { return '#cases/' + c.ind + '/' + c.id; }
+  function shortModels(c) { return c.models.map(function (m) { return '<span title="' + esc(RI.MODEL[m[0]].name) + '">' + esc(RI.MODEL[m[0]].short) + '</span>'; }).join(''); }
+  function match(c, q) {
+    q = (q || '').toLowerCase().trim();
+    if (!q) return true;
+    var hay = [c.no, c.name, c.q, RI.INDUSTRY[c.ind].name, RI.SHAPES[c.shape].name, c.act]
+      .concat(c.sig.map(function (s) { return s[1] + ' ' + s[2] + ' ' + s[0]; }))
+      .concat(c.models.map(function (m) { return RI.MODEL[m[0]].name; })).join(' ').toLowerCase();
+    return q.split(/\s+/).every(function (w) { return hay.indexOf(w) >= 0; });
+  }
+
+  /* ---------------------------------------------------------------- Figure 2: industries x shapes */
+  function matrix(f) {
+    var max = 1, count = {};
+    RI.CASES.forEach(function (c) { var k = c.ind + ':' + c.shape; count[k] = (count[k] || 0) + 1; if (count[k] > max) max = count[k]; });
+    var head = '<tr><th></th>' + RI.SHAPE_ORDER.map(function (s) {
+      return '<th scope="col"><button type="button" data-shape="' + s + '" class="' + (f.shape === s && !f.ind ? 'on' : '') + '" title="' + esc(RI.SHAPES[s].blurb) + '">' + esc(RI.SHAPES[s].name) + '</button></th>';
+    }).join('') + '<th class="tot" scope="col">n</th></tr>';
+    var body = RI.INDUSTRIES.map(function (ind) {
+      var n = 0;
+      var cells = RI.SHAPE_ORDER.map(function (s) {
+        var k = count[ind.key + ':' + s] || 0; n += k;
+        if (!k) return '<td><span class="z">·</span></td>';
+        var on = f.ind === ind.key && f.shape === s;
+        return '<td><button type="button" data-cell="' + ind.key + ':' + s + '" class="' + (on ? 'on' : '') + '" style="--a:' + Math.round(10 + 34 * k / max) + '%" ' +
+          'aria-label="' + esc(ind.name + ', ' + RI.SHAPES[s].name + ': ' + k) + '">' + k + '</button></td>';
+      }).join('');
+      return '<tr><th scope="row"><button type="button" data-ind="' + ind.key + '" class="' + (f.ind === ind.key && !f.shape ? 'on' : '') + '">' + UI.icon(ind.icon) + esc(ind.name) + '</button></th>' + cells + '<td class="tot">' + n + '</td></tr>';
+    }).join('');
+    return '<figure class="cs-fig"><div class="cs-mx-wrap"><table class="cs-mx"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
+      '<figcaption><b>Figure 2.</b> ' + RI.CASES.length + ' situations in ' + RI.INDUSTRIES.length + ' industries, and only ' + RI.SHAPE_ORDER.length +
+      ' shapes of prediction. Every industry reuses the same columns: the list is long, but it is finite. Click a number, an industry or a shape.</figcaption></figure>';
+  }
+
+  function list(f) {
+    var cases = RI.CASES.filter(function (c) {
+      return (!f.ind || c.ind === f.ind) && (!f.shape || c.shape === f.shape) && match(c, f.q) &&
+        (!f.model || c.models.some(function (m) { return m[0] === f.model; }));
+    });
+    if (f.model) {  // best-placed first
+      var rank = function (c) { for (var i = 0; i < c.models.length; i++) if (c.models[i][0] === f.model) return i; return 9; };
+      cases.sort(function (a, b) { return rank(a) - rank(b) || a.idx - b.idx; });
+    }
+    if (!cases.length) return '<div class="ui-empty">' + UI.icon('search') + '<h3>No case matches' + (f.q ? ' “' + esc(f.q) + '”' : '') + '</h3><p class="muted">Try fewer words, or <button type="button" class="ui-btn sm ghost" data-clear>clear the filters</button></p></div>';
+    var row = function (c) {
+      return '<a class="cs-row" href="' + caseUrl(c) + '"><span class="no">' + c.no + '</span><span><b>' + esc(c.name) + '</b><span class="cs-tag">' + esc(RI.SHAPES[c.shape].name) + '</span></span>' +
+        '<span class="q">' + esc(c.q) + '</span><span class="cs-mods">' + shortModels(c) + '</span></a>';
+    };
+    if (f.model) return '<div class="cs-rows">' + cases.map(row).join('') + '</div>';
+    return RI.INDUSTRIES.map(function (ind) {
+      var mine = cases.filter(function (c) { return c.ind === ind.key; });
+      if (!mine.length) return '';
+      return '<section class="cs-ind"><h2>' + UI.icon(ind.icon) + '<span class="ri-sec">§' + ind.letter + '</span>' + esc(ind.name) + '</h2><p>' + esc(ind.blurb) + '</p>' +
+        '<div class="cs-rows">' + mine.map(row).join('') + '</div></section>';
+    }).join('');
+  }
+
+  function limits() {
+    return '<section class="cs-limits"><div class="ri-thm red"><b>Outside this book.</b> Five kinds of work look like "machine learning" but aren\'t prediction from a table. They often use these predictions, or feed them a column.' +
+      '<ul>' + RI.CASE_LIMITS.map(function (l) { return '<li><b>' + esc(l[0]) + '.</b> ' + esc(l[1]) + '</li>'; }).join('') + '</ul></div></section>';
+  }
+
+  /* ---------------------------------------------------------------- one case */
+  var TYPE_WORD = { numeric: 'number', categorical: 'category', datetime: 'date', boolean: 'true / false', text: 'text', id: 'id' };
+  var ROLE_GLYPH = { feature: 'x', target: 'y', time: 't', group: 'g', ignore: '∅' };
+  function colRows(c, cols) {
+    return '<table class="cs-cols"><tbody>' + cols.map(function (s) {
+      var x = RI.caseColumn(s), notes = [];
+      if (x.key) notes.push('<span class="k">★ key driver</span>');
+      if (x.known && c.task === 'forecast') notes.push('<span class="kn">known ahead</span>');
+      if (x.role === 'target') notes.push('<span class="small muted">' + (c.task === 'anomaly' ? 'the label, only to measure' : 'what you predict') + '</span>');
+      if (x.role === 'ignore') notes.push('<span class="small muted">row id, not a feature</span>');
+      return '<tr><td><span class="ri-role ' + x.role + '">' + ROLE_GLYPH[x.role] + '</span></td><td class="nm">' + esc(x.name) + '</td><td class="ty">' + TYPE_WORD[x.type] + '</td><td>' + notes.join(' ') + '</td></tr>';
+    }).join('') + '</tbody></table>';
+  }
+
+  function casePage(c, view) {
+    var ind = RI.INDUSTRY[c.ind], shape = RI.SHAPES[c.shape], off = {}, pick = c.models[0][0], cur = 'train', files = null;
+    var i = c.idx, prev = RI.CASES[i - 1], next = RI.CASES[i + 1];
+    var same = RI.CASES.filter(function (x) { return x.shape === c.shape && x.ind !== c.ind; }).slice(0, 7);
+    function spec() { return RI.caseSpec(c, off); }
+    function gen() { files = RI.generate(spec(), pick, c.name); return files; }
+    function used(s) { return files && files.train.indexOf('"' + s[0].split('|')[0] + '"') >= 0; }
+    function sigsHtml() {
+      if (!c.sig.length) return '';
+      var m = RI.MODEL[pick];
+      return c.sig.map(function (s, k) {
+        var x = RI.caseColumn(s[0]), on = !off[k];
+        var tag = c.task === 'forecast' ? (x.known ? 'known ahead' : 'past only: lagged by the horizon') : TYPE_WORD[x.type];
+        return '<label class="cs-sig' + (on ? '' : ' off') + '"><input type="checkbox" data-sig="' + k + '"' + (on ? ' checked' : '') + ' aria-label="Use ' + esc(s[1]) + '">' +
+          '<div class="cs-sig-body"><b>' + esc(s[1]) + '</b><span class="src">' + esc(s[2]) + '</span><p>' + esc(s[3]) + '</p>' +
+          '<div class="meta"><code>' + esc(x.name) + '</code><span>' + esc(tag) + '</span>' + (x.key ? '<span>★ key driver</span>' : '') +
+          (on && !used(s) ? '<span class="ign">' + esc(m.short) + ' can\'t use it: pick a model that reads drivers</span>' : '') + '</div></div></label>';
+      }).join('');
+    }
+    function modelsHtml() {
+      return c.models.map(function (mm, r) {
+        var m = RI.MODEL[mm[0]];
+        return '<div role="button" tabindex="0" class="cs-model' + (mm[0] === pick ? ' on' : '') + '" data-pick="' + m.slug + '" aria-pressed="' + (mm[0] === pick) + '"><span class="rk">' + (r + 1) + '</span>' +
+          '<span><b>' + esc(m.name) + '</b><span class="fam">' + esc(RI.FAMILIES[m.family].name) + '</span></span>' +
+          '<a href="#atlas/model/' + m.slug + '" data-atlas>Atlas ' + UI.icon('arrow') + '</a><span class="why">' + esc(mm[1]) + '</span></div>';
+      }).join('');
+    }
+    function glanceHtml() {
+      var on = c.sig.filter(function (s, k) { return !off[k]; }).length, sp = spec();
+      var f = RI.FREQ[sp.freq];
+      return '<dl class="cs-glance"><dt>shape</dt><dd><a href="#cases/shape/' + c.shape + '">' + esc(shape.name) + '</a></dd><dt>task</dt><dd>' + esc(RI.TASKS[c.task]) + '</dd>' +
+        (c.task === 'forecast' ? '<dt>step</dt><dd>' + esc(f.name) + '</dd><dt>horizon</dt><dd>' + sp.horizon + ' ' + esc(f.unit) + '</dd>' : '') +
+        '<dt>data</dt><dd>' + esc(RI.ROWS[c.rows]) + '</dd><dt>columns</dt><dd>' + sp.columns.length + ' (' + on + ' of ' + c.sig.length + ' signals)</dd>' +
+        '<dt>model</dt><dd>' + esc(RI.MODEL[pick].name) + '</dd></dl>';
+    }
+    function codeHtml() {
+      return RI.codeBlock(files, cur);
+    }
+    function refresh() {
+      gen();
+      view.querySelector('[data-sigs]').innerHTML = sigsHtml();
+      view.querySelector('[data-models]').innerHTML = modelsHtml();
+      view.querySelector('[data-glance]').innerHTML = glanceHtml();
+      view.querySelector('[data-codebox]').innerHTML = codeHtml();
+      view.querySelector('[data-code-title]').textContent = RI.MODEL[pick].name;
+    }
+    function draw() {
+      gen();
+      var sp = spec();
+      view.innerHTML = '<div class="ui-wrap"><div class="cs-crumbs"><a href="#cases">Casebook</a> › <a href="#cases/' + c.ind + '">§' + ind.letter + ' ' + esc(ind.name) + '</a></div>' +
+        '<div class="cs-entry"><article><span class="ri-listing-no">Case ' + c.no + ' · ' + esc(shape.name) + '</span><h1>' + esc(c.name) + '</h1>' +
+        '<div class="ui-row"><span class="ui-badge brand">' + esc(RI.TASKS[c.task]) + '</span><span class="ui-badge">' + UI.icon(ind.icon) + esc(ind.name) + '</span></div>' +
+        '<p class="cs-lead">' + esc(c.q) + '</p>' +
+        '<div class="ri-thm"><b>Setting.</b> <i class="nm">(' + esc(shape.blurb) + ')</i><div class="ri-tex">' + RI.tex(RI.notation(sp), true) + '</div></div>' +
+        '<h2><span class="ri-sec">§1</span>The history you already have</h2><p class="cs-sub">Columns most teams can export today. Their names are suggestions: paste your own header in the Lab.</p>' + colRows(c, c.cols) +
+        '<h2><span class="ri-sec">§2</span>Beyond history: signals that sharpen it</h2><p class="cs-sub">History says what happened. These say what is coming, or why. Untick the ones you can\'t get yet; the code in §6 follows.</p>' +
+        '<div class="cs-sigs" data-sigs>' + sigsHtml() + '</div>' +
+        '<h2><span class="ri-sec">§3</span>The models, best first</h2><p class="cs-sub">Pick one to write its code. The Lab ranks all of them with a visible formula.</p><div class="cs-models" data-models>' + modelsHtml() + '</div>' +
+        '<h2><span class="ri-sec">§4</span>From prediction to decision</h2>' +
+        '<div class="ri-thm green"><b>Decision rule.</b> ' + RI.mtext(c.act) + (c.tex ? '<div class="ri-tex">' + RI.tex(c.tex, true) + '</div>' : '') + '</div>' +
+        (c.watch ? '<div class="ri-thm red"><b>Caution.</b> ' + RI.mtext(c.watch) + '</div>' : '') +
+        '<h2><span class="ri-sec">§5</span>Build it and check it</h2><div class="cs-checks">' +
+        '<div class="ui-card"><h4>Features</h4><div class="cs-links">' + c.feats.map(function (s) { var x = RI.FEATURES.filter(function (y) { return y.slug === s; })[0]; return '<a href="#atlas/feature/' + s + '">' + esc(x.name) + '</a>'; }).join('') + '</div></div>' +
+        '<div class="ui-card"><h4>Validation</h4><div class="cs-links">' + (c.val ? '<a href="#atlas/validation/' + c.val + '">' + esc(RI.VALIDATION.filter(function (y) { return y.slug === c.val; })[0].name) + '</a>' : '<span class="small muted">No target to validate against: check the groups are stable across seeds and samples.</span>') + '</div></div>' +
+        '<div class="ui-card"><h4>Metrics</h4><div class="cs-links">' + c.metrics.map(function (s) { var x = RI.METRICS.filter(function (y) { return y.slug === s; })[0]; return '<a href="#atlas/metric/' + s + '">' + esc(x.name) + '</a>'; }).join('') + '</div></div></div>' +
+        '<div class="cs-codehead"><h2><span class="ri-sec">§6</span>The code: <span data-code-title>' + esc(RI.MODEL[pick].name) + '</span></h2>' +
+        '<button type="button" class="ui-btn sm" data-lab>' + UI.icon('flask') + 'Open in the Lab</button></div>' +
+        '<p class="cs-sub small muted">train.py, predict.py and requirements.txt for this case\'s columns. Rename the columns to yours, or open it in the Lab and paste your header.</p>' +
+        '<div data-codebox>' + codeHtml() + '</div>' +
+        '<div class="cs-nav">' + (prev ? '<a class="ui-btn ghost" href="' + caseUrl(prev) + '">' + UI.icon('back') + prev.no + ' ' + esc(prev.name) + '</a>' : '<span></span>') +
+        (next ? '<a class="ui-btn ghost" href="' + caseUrl(next) + '">' + next.no + ' ' + esc(next.name) + UI.icon('arrow') + '</a>' : '') + '</div></article>' +
+        '<aside class="cs-side"><div class="ui-card"><h4>At a glance</h4><div data-glance>' + glanceHtml() + '</div></div>' +
+        '<button type="button" class="ui-btn primary block" data-lab>' + UI.icon('flask') + 'Open in the Lab</button>' +
+        (same.length ? '<div class="ui-card cs-same"><h4>Same shape, other industries</h4>' + same.map(function (x) { return '<a href="' + caseUrl(x) + '"><span class="no">' + x.no + '</span>' + esc(x.name) + '</a>'; }).join('') +
+          '<p class="small muted" style="margin:8px 0 0">Same maths, different columns.</p></div>' : '') +
+        '</aside></div></div>';
+    }
+    view.addEventListener('keydown', function (e) {
+      var p = e.target.closest && e.target.closest('[data-pick]');
+      if (p && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick = p.getAttribute('data-pick'); refresh(); view.querySelector('[data-pick="' + pick + '"]').focus(); }
+    });
+    view.addEventListener('change', function (e) {
+      var s = e.target.closest('[data-sig]');
+      if (!s) return;
+      var k = +s.getAttribute('data-sig');
+      if (s.checked) delete off[k]; else off[k] = true;
+      refresh();
+    });
+    view.addEventListener('click', function (e) {
+      if (e.target.closest('[data-atlas]')) return;  // the link inside a model row
+      var p = e.target.closest('[data-pick]');
+      if (p) { pick = p.getAttribute('data-pick'); refresh(); return; }
+      if (e.target.closest('[data-lab]')) {
+        UI.store.set('lab-load', { spec: spec(), model: pick });
+        UI.go('lab');
+        UI.toast('Case ' + c.no + ' is in the Lab: paste your own header to swap the columns');
+      }
+    });
+    RI.wireCode(view, function () { return files; }, function (k) { cur = k; view.querySelector('[data-codebox]').innerHTML = codeHtml(); },
+      function () { return { title: c.name + ' (' + RI.MODEL[pick].name + ')', model: pick, spec: spec(), notes: c.q }; });
+    draw();
+    RI.whenTex(function () { var y = window.scrollY; draw(); window.scrollTo(0, y); });
+  }
+
+  UI.page('cases', { title: 'The Casebook', nav: 'Cases', icon: 'cases', order: 15 }, function (view, ctx) {
+    var a = ctx.args;
+    if (a.length === 2 && RI.INDUSTRY[a[0]] && RI.CASE[a[1]] && RI.CASE[a[1]].ind === a[0]) {
+      var c = RI.CASE[a[1]];
+      document.title = c.name + ' · Casebook · RoboIntern';
+      casePage(c, view);
+      return;
+    }
+    var f = { ind: RI.INDUSTRY[a[0]] ? a[0] : null, shape: a[0] === 'shape' && RI.SHAPES[a[1]] ? a[1] : null, model: a[0] === 'model' && RI.MODEL[a[1]] ? a[1] : null, q: '' };
+    function filterLine() {
+      var bits = [];
+      if (f.ind) bits.push(esc(RI.INDUSTRY[f.ind].name));
+      if (f.shape) bits.push(esc(RI.SHAPES[f.shape].name));
+      if (f.model) bits.push('cases that use ' + esc(RI.MODEL[f.model].name));
+      if (!bits.length) return '';
+      return '<div class="cs-filter">Showing <b>' + bits.join(' × ') + '</b>' + (f.shape && !f.ind ? '<span>: ' + esc(RI.SHAPES[f.shape].blurb) + '</span>' : '') +
+        '<button type="button" class="ui-btn sm ghost" data-clear>' + UI.icon('x') + 'Show all</button>' +
+        (f.model ? '<a class="ui-btn sm ghost" href="#atlas/model/' + f.model + '">' + UI.icon('book') + 'The model in the Atlas</a>' : '') + '</div>';
+    }
+    function chips() {
+      return '<div class="cs-chips"><button type="button" class="cs-chip' + (!f.ind && !f.shape && !f.model ? ' on' : '') + '" data-clear>All <span class="n">' + RI.CASES.length + '</span></button>' +
+        RI.INDUSTRIES.map(function (ind) {
+          var n = RI.CASES.filter(function (c) { return c.ind === ind.key; }).length;
+          return '<button type="button" class="cs-chip' + (f.ind === ind.key ? ' on' : '') + '" data-ind="' + ind.key + '">' + UI.icon(ind.icon) + esc(ind.name) + ' <span class="n">' + n + '</span></button>';
+        }).join('') + '</div>';
+    }
+    function draw() {
+      view.innerHTML = '<div class="ui-wrap"><div class="cs-head"><div><div class="eyebrow">§ The Casebook</div><h1>Every situation, linked to its model</h1>' +
+        '<p class="muted">' + RI.CASES.length + ' business situations from ' + RI.INDUSTRIES.length + ' industries. Each one names the data you already have, the signals that would sharpen it, ' +
+        'the models that fit, how the prediction becomes a decision, and the Python.</p></div>' +
+        '<input type="search" class="cs-search" data-q placeholder="safety stock, weather, churn…" value="' + esc(f.q) + '" aria-label="Search the casebook"></div>' +
+        '<div data-top>' + top() + '</div><div data-list>' + list(f) + '</div>' + (f.model ? '' : limits()) + '</div>';
+    }
+    function top() { return (f.model ? '' : matrix(f) + chips()) + filterLine(); }
+    function redraw(scroll) {
+      view.querySelector('[data-top]').innerHTML = top();
+      view.querySelector('[data-list]').innerHTML = list(f);
+      if (scroll) { var el = view.querySelector('[data-list]'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    }
+    view.addEventListener('input', function (e) { if (e.target.matches('[data-q]')) { f.q = e.target.value; view.querySelector('[data-list]').innerHTML = list(f); } });
+    view.addEventListener('click', function (e) {
+      var t;
+      if ((t = e.target.closest('[data-cell]'))) { var p = t.getAttribute('data-cell').split(':'); f.ind = p[0]; f.shape = p[1]; f.model = null; redraw(true); return; }
+      if ((t = e.target.closest('[data-ind]'))) { f.ind = f.ind === t.getAttribute('data-ind') && !f.shape ? null : t.getAttribute('data-ind'); f.shape = null; f.model = null; redraw(false); return; }
+      if ((t = e.target.closest('[data-shape]'))) { f.shape = f.shape === t.getAttribute('data-shape') && !f.ind ? null : t.getAttribute('data-shape'); f.ind = null; f.model = null; redraw(false); return; }
+      if (e.target.closest('[data-clear]')) {
+        var hadModel = !!f.model;
+        f.ind = f.shape = f.model = null; f.q = '';
+        var s = view.querySelector('[data-q]'); if (s) s.value = '';
+        if (hadModel) { draw(); return; }
+        redraw(false);
+      }
+    });
     draw();
   });
 })();
@@ -3175,6 +4760,7 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     function drawS1() {
       S1.innerHTML = '<h2><span class="ri-sec">§1</span>Your data</h2><p class="lb-lead">Paste the header row of your table (CSV, TSV or spreadsheet copy). A few sample rows sharpen the type guesses.</p>' +
         '<div class="lb-samples"><span>Try one:</span>' + RI.SAMPLES.map(function (s) { return '<button type="button" class="lb-chip" data-sample="' + s.key + '">' + esc(s.name) + '</button>'; }).join('') +
+        '<a class="lb-chip lb-cases" href="#cases">' + UI.icon('cases') + 'or start from one of ' + RI.CASES.length + ' cases</a>' +
         (ctx.me ? '<span class="ui-spacer"></span><span class="lb-saved" data-saved-box></span>' : '') + '</div>' +
         '<textarea class="lb-paste" data-paste spellcheck="false" autocomplete="off" aria-label="Header row and sample rows" placeholder="date,store_id,promo,temp_c,sales\n2025-03-01,S01,true,11.5,188">' + esc(st.text) + '</textarea>' +
         '<div class="lb-info" data-info></div><div class="lb-notation ri-tex" data-notation hidden></div>';
@@ -3450,7 +5036,7 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     title: 'Describe your data.<br><em>Get the model, and the Python.</em>',
     lead: 'Paste your table\u2019s header row and mark what matters: the target, the time column, the drivers you trust. RoboIntern ranks the machine-learning models that fit, explains the maths behind each one, and writes train.py and predict.py for you to run.',
     cta: 'Start in the Lab',
-    proof: [RI.MODELS.length + ' models, from seasonal na\u00efve to foundation models', 'Leakage-aware forecasting code', 'Your data never leaves the browser'],
+    proof: [RI.MODELS.length + ' models, from seasonal na\u00efve to foundation models', RI.CASES.length + ' business cases in ' + RI.INDUSTRIES.length + ' industries', 'Your data never leaves the browser'],
     stepsTitle: 'How it works',
     stepsLead: 'No uploads, no notebooks to configure. Lists in, code out.',
     steps: [['Paste the header', 'A header row, or a few rows of your CSV or spreadsheet. Types and roles are guessed: date \u2192 time t, sales \u2192 target y.'],
@@ -3459,11 +5045,13 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     featuresTitle: 'What\u2019s inside',
     features: [['flask', 'The Lab', 'A recommender with a visible scoring formula: you see exactly why LightGBM beats ARIMA for your data, and when it doesn\u2019t.'],
                ['book', 'The Atlas', 'Every model with its definition, objective, intuition, assumptions, hyperparameters and complexity, typeset properly.'],
+               ['cases', 'The Casebook', RI.CASES.length + ' situations from factories to hospitals, each linked to its models, the outside signals that sharpen it (contracts, weather, events) and the decision it drives.'],
                ['sliders', 'Feature development', 'Lags, rolling windows, Fourier terms, target encoding, known-ahead vs. past-only drivers, each with the leakage trap it avoids.'],
                ['grid', 'Validation & metrics', 'Expanding windows, purged splits, MASE, pinball loss, coverage, with fold diagrams.'],
                ['notebook', 'Your notebook', 'Save listings and data descriptions, edit the code, star the good ones, and reopen any of them in the Lab.'],
                ['users', 'The Commons', 'Share a listing and fork other people\u2019s. Forks count as citations, as they should.']],
-    faq: [['Does RoboIntern run my data or train anything?', 'No. It\u2019s a lookup dictionary with a code writer. Parsing happens in your browser; you run the Python on your own machine, where your data already is.'],
+    faq: [['Is there a limit to what machine learning can do in my industry?', 'For prediction from tables, yes, and it is smaller than it looks. The Casebook lists ' + RI.CASES.length + ' situations across ' + RI.INDUSTRIES.length + ' industries, and each is one of ' + RI.SHAPE_ORDER.length + ' shapes: demand, load, event risk, propensity, quality, value, duration, triage, outliers, metric watch and segmentation. What changes from case to case is the columns, above all the outside signals you join to your history.'],
+          ['Does RoboIntern run my data or train anything?', 'No. It\u2019s a lookup dictionary with a code writer. Parsing happens in your browser; you run the Python on your own machine, where your data already is.'],
           ['What do you store?', 'Only what you save: listing titles, notes, the code, and the column names, types and roles of your data description. Never the values in your table.'],
           ['Which libraries does the code use?', 'pandas and scikit-learn throughout, plus XGBoost, LightGBM, CatBoost, statsmodels, Prophet or PyTorch when the model needs them. requirements.txt lists exactly what to install.'],
           ['Is the generated code any good?', 'It is careful where it counts: time-ordered splits, a seasonal-na\u00efve benchmark, MASE, lags that never peek at the future, conformal intervals and permutation importance. Every model\u2019s listing is run end to end on test data before release. It is still a starting point: read it and tune it.'],
@@ -3482,6 +5070,26 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
       '<div class="lp-rank">' + rk(1, 'LightGBM', '81.4', true) + rk(2, 'CatBoost', '78.9') + rk(3, 'SARIMAX', '64.2') + rk(4, 'Seasonal na\u00efve', '41.0') + '</div>' +
       '<div class="lp-code"><span class="k">def</span> add_features(df):\n    <span class="k">for</span> k <span class="k">in</span> LAGS:  <span class="c"># 1, 7, 14, 28</span>\n        df[<span class="s">f"lag_{k}"</span>] = g[TARGET].shift(k)\n    df[<span class="s">"promo_delta"</span>] = df.promo - g.promo.shift(<span class="n">1</span>)</div>' +
       '</div></div>';
+  }
+  /* The Casebook teaser: ten industries, and two worked examples of history + outside signals */
+  var SHOWCASE = ['safety-stock', 'plant-energy'];
+  function casebook() {
+    var esc = UI.esc;
+    var tiles = RI.INDUSTRIES.map(function (ind) {
+      var n = RI.CASES.filter(function (c) { return c.ind === ind.key; }).length;
+      return '<a class="lp-ind" href="#cases/' + ind.key + '">' + UI.icon(ind.icon) + '<span>' + esc(ind.name) + '</span><i>' + n + '</i></a>';
+    }).join('');
+    var ex = SHOWCASE.map(function (id) {
+      var c = RI.CASE[id], m = RI.MODEL[c.models[0][0]];
+      return '<a class="ui-card lp-case" href="#cases/' + c.ind + '/' + c.id + '"><span class="ri-listing-no">Case ' + c.no + '</span><h3>' + esc(c.name) + '</h3>' +
+        '<p>' + esc(c.q) + '</p><div class="lp-sig"><span class="lbl">history</span>' + c.cols.slice(0, 4).map(function (s) { return '<code>' + esc(s.split('|')[0]) + '</code>'; }).join('') + '</div>' +
+        '<div class="lp-sig plus"><span class="lbl">+ signals</span>' + c.sig.slice(0, 3).map(function (s) { return '<span>' + esc(s[1]) + '</span>'; }).join('') + '</div>' +
+        '<div class="lp-sig"><span class="lbl">model</span><b>' + esc(m.name) + '</b></div></a>';
+    }).join('');
+    return '<section class="lp-section"><div class="ui-wrap"><div class="lp-head"><h2>The Casebook</h2><p>' + RI.CASES.length + ' business situations, each linked to the models that fit, ' +
+      'the outside signals that make it sharper than history alone, and the decision it drives. Long, but finite: they all come in ' + RI.SHAPE_ORDER.length + ' shapes.</p></div>' +
+      '<div class="lp-inds">' + tiles + '</div><div class="lp-cases">' + ex + '</div>' +
+      '<p style="text-align:center;margin-top:18px"><a class="ui-btn" href="#cases" data-go="cases">' + UI.icon('cases') + 'Open the Casebook ' + UI.icon('arrow') + '</a></p></div></section>';
   }
   var STRIP = ['lgbm', 'arima', 'gp'];
   function mathStrip() {
@@ -3505,6 +5113,7 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
         '<div class="lp-steps">' + C.steps.map(function (s) { return '<div class="ui-card lp-step"><h3>' + esc(s[0]) + '</h3><p class="muted">' + esc(s[1]) + '</p></div>'; }).join('') + '</div></div></section>' +
       '<section class="lp-section"><div class="ui-wrap"><div class="lp-head"><h2>' + esc(C.featuresTitle) + '</h2></div>' +
         '<div class="ui-grid">' + C.features.map(function (f) { return '<div class="ui-card lp-feature">' + UI.icon(f[0]) + '<h3>' + esc(f[1]) + '</h3><p>' + esc(f[2]) + '</p></div>'; }).join('') + '</div></div></section>' +
+      casebook() +
       '<section class="lp-section"><div class="ui-wrap"><div class="lp-head"><h2>Typeset, not hand-waved</h2><p>Every entry in the Atlas states its model, its objective and its assumptions.</p></div>' + mathStrip() +
         '<p style="text-align:center;margin-top:18px"><a class="ui-btn" href="#atlas" data-go="atlas">All ' + RI.MODELS.length + ' models ' + UI.icon('arrow') + '</a></p></div></section>' +
       '<section class="lp-section"><div class="ui-wrap"><div class="lp-head"><h2>Questions</h2></div><div class="lp-faq">' +
