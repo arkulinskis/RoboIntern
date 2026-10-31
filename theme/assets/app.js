@@ -440,6 +440,7 @@
         '<a href="#cases" data-go="cases">Casebook</a>' +
         '<a href="#lab" data-go="lab">Lab</a>' +
         '<a href="#commons" data-go="commons">Commons</a>' +
+        '<a href="https://prepsto.com/#f/dqt9qx8" target="_blank" rel="noopener" data-prepsto-open>Suggest an idea</a>' +
         '<button type="button" data-feedback>Send feedback</button>' +
         '<button type="button" data-lk-open="overview">Privacy &amp; Terms</button>' +
         '</div><p class="ui-footer-legal small muted">© ' + new Date().getFullYear() + ' ' + esc(UI.config.name) + ' · <span class="mono">∎</span> Q.E.D.</p></div>';
