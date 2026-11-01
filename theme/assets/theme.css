@@ -19,12 +19,15 @@ html .anvil-spinner::after, #loadingSpinner::after {
   content: ""; position: absolute; inset: 14px; border-radius: 8px;
   background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%231f3a93%22/%3E%3Cpath d=%22M32 8v8%22 stroke=%22%23faf8f2%22 stroke-width=%224%22 stroke-linecap=%22round%22/%3E%3Ccircle cx=%2232%22 cy=%228%22 r=%224.5%22 fill=%22%23e0483d%22/%3E%3Crect x=%2211%22 y=%2217%22 width=%2242%22 height=%2236%22 rx=%227%22 fill=%22%23faf8f2%22/%3E%3Ccircle cx=%2223%22 cy=%2230%22 r=%224.6%22 fill=%22%231f3a93%22/%3E%3Ccircle cx=%2241%22 cy=%2230%22 r=%224.6%22 fill=%22%231f3a93%22/%3E%3Cpath d=%22M20 39q12 12 24 0%22 fill=%22none%22 stroke=%22%23b3261e%22 stroke-width=%223.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E") center / contain no-repeat;
 }
+/* loader:start dots brand=#1f3a93 (made by APP_MAKER/tools/loaders.py; rerun it instead of editing) */
+html .anvil-spinner, #loadingSpinner { animation: app-breathe 2s ease-in-out infinite; }
 html .anvil-spinner::before, #loadingSpinner::before {
-  content: ""; position: absolute; inset: -7px; border-radius: 14px; border: 2px solid transparent;
-  border-top-color: #1f3a93; border-right-color: #b3261e; animation: app-turn 1s linear infinite;
+  content: ""; position: absolute; width: 8px; height: 8px; border-radius: 50%; bottom: -26px; left: calc(50% - 18px);
+  animation: app-dots 1.2s infinite;
 }
-@keyframes app-turn { to { transform: rotate(360deg); } }
-@keyframes app-breathe { 50% { transform: scale(.94); } }
+@keyframes app-breathe { 50% { transform: scale(.96); } }
+@keyframes app-dots { 0%, 100% { background: #1f3a93; box-shadow: 14px 0 0 rgba(31, 58, 147, 0.25), 28px 0 0 rgba(31, 58, 147, 0.25); } 33% { background: rgba(31, 58, 147, 0.25); box-shadow: 14px 0 0 #1f3a93, 28px 0 0 rgba(31, 58, 147, 0.25); } 66% { background: rgba(31, 58, 147, 0.25); box-shadow: 14px 0 0 rgba(31, 58, 147, 0.25), 28px 0 0 #1f3a93; } }
+/* loader:end */
 @media (prefers-reduced-motion: reduce) {
   html .anvil-spinner, #loadingSpinner { animation: none; }
   html .anvil-spinner::before, #loadingSpinner::before { animation-duration: 3s; }
