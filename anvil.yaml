@@ -290,7 +290,7 @@ metadata:
   title: 'RoboIntern: a field guide to predictive models'
 name: RoboIntern
 native_deps:
-  head_html: "<script src=\"_/theme/legal-kit.js?v=530d4512ee\"></script>\n<meta name=\"viewport\" content=\"width=device-width,\
+  head_html: "<script src=\"_/theme/legal-kit.js?v=8310956cf5\"></script>\n<meta name=\"viewport\" content=\"width=device-width,\
     \ initial-scale=1, viewport-fit=cover\">\n<meta name=\"theme-color\" content=\"#faf8f2\">\n<meta name=\"apple-mobile-web-app-capable\"\
     \ content=\"yes\">\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"\
     https://fonts.gstatic.com\" crossorigin>\n<link href=\"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap\"\
@@ -302,10 +302,10 @@ native_deps:
     \ any other icon link. */\n(function () {\n  function keep() {\n    var ours = document.getElementById('ui-favicon');\n\
     \    if (!ours) return;\n    document.querySelectorAll('link[rel~=\"icon\"]').forEach(function (l) { if (l !== ours) l.remove();\
     \ });\n  }\n  keep();\n  document.addEventListener('DOMContentLoaded', keep);\n  window.addEventListener('load', keep);\n\
-    })();\n</script>\n\n<!-- Prepsto feedback panel: the footer's \"Suggest an idea\" link (data-prepsto-open) slides it in.\
-    \ No floating button, no cookies, nothing loads until it is opened. Codes: APP_MAKER/prepsto-links.json -->\n<script src=\"\
-    https://prepsto.com/_/theme/widget.js\" data-prepsto=\"dqt9qx8\" data-button=\"false\" data-label=\"Suggest an idea\"\
-    \ async></script>\n<link rel=\"stylesheet\" href=\"_/theme/app.css?v=f2bff2e353\">\n<script src=\"_/theme/app.js?v=c3d69867e6\"\
+    })();\n</script>\n\n<!-- Prepsto feedback panel: every \"Submit feedback\" link and button opens it (it is the only feedback\
+    \ channel). No floating button, no cookies, nothing loads until it is opened. Codes: APP_MAKER/prepsto-links.json -->\n\
+    <script src=\"https://prepsto.com/_/theme/widget.js\" data-prepsto=\"dqt9qx8\" data-button=\"false\" data-label=\"Submit\
+    \ feedback\" async></script>\n<link rel=\"stylesheet\" href=\"_/theme/app.css?v=f2bff2e353\">\n<script src=\"_/theme/app.js?v=534aea6d60\"\
     ></script>\n"
 package_name: RoboIntern
 runtime_options:
