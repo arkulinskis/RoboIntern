@@ -6,13 +6,12 @@ from ... import router
 
 
 class SampleCard(SampleCardTemplate):
-    """A Lab sample as a quick start on an empty notebook. item = {key, name, line} (ri.meta()["samples"])."""
+    """A Lab sample as a quick start on an empty notebook. item = {key, name, line} (ri.meta()["samples"]).
+    The click puts the sample in the Lab's hand-off store (RI.py.startSample) and opens the Lab."""
 
     def __init__(self, **properties):
         super().__init__(**properties)
-        self.button.text = self.item["name"] + "\n" + self.item["line"]
 
-    @handle("button", "click")
-    def button_click(self, **event_args):
+    def sample_click(self, event):
         window.RI.py.startSample(self.item["key"])
         router.go("lab")

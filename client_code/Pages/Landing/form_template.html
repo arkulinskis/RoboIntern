@@ -36,9 +36,9 @@
                 <div><span class="r">4</span><span>Seasonal naïve</span><span class="s">41.0</span><span></span><i><b style="width:41%"></b></i></div>
               </div>
               <div class="lp-code"><span class="k">def</span> add_features(df):
-    <span class="k">for</span> k <span class="k">in</span> LAGS:  <span class="c"># 1, 7, 14, 28</span>
-        df[<span class="s">f"lag_{k}"</span>] = g[TARGET].shift(k)
-    df[<span class="s">"promo_delta"</span>] = df.promo - g.promo.shift(<span class="n">1</span>)</div>
+&#160;&#160;&#160;&#160;<span class="k">for</span> k <span class="k">in</span> LAGS:  <span class="c"># 1, 7, 14, 28</span>
+&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;df[<span class="s">f"lag_{k}"</span>] = g[TARGET].shift(k)
+&#160;&#160;&#160;&#160;df[<span class="s">"promo_delta"</span>] = df.promo - g.promo.shift(<span class="n">1</span>)</div>
             </div>
           </div>
         </div>

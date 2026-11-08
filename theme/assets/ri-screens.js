@@ -90,8 +90,8 @@
     }
 
     /* ---------------------------------------------------------------- drawing */
-    view.innerHTML = '<div class="ui-wrap"><header class="lb-head"><div class="eyebrow">§ The Lab</div>' +
-      '<h1>Describe your data. <em>Get the model, and the code.</em></h1>' +
+    view.innerHTML = '<div class="ui-wrap"><header class="lb-head">' +
+      '<h1>The Lab: describe your data. <em>Get the model, and the code.</em></h1>' +
       '<p class="muted">Paste a header row, or a few rows. Mark what to predict, which column is time, and which drivers matter. The ranking and the Python update as you go. ' +
       'Your data never leaves this browser.</p></header>' +
       '<div class="lb-grid"><div class="lb-mainc">' +
@@ -540,7 +540,7 @@
       if (html) { view.innerHTML = html; return; }
       var tab = TABS.some(function (t) { return t[0] === a[0]; }) ? a[0] : '';
       var counts = { '': RI.MODELS.length, features: RI.FEATURES.length, validation: RI.VALIDATION.length, metrics: RI.METRICS.length, compare: '' };
-      view.innerHTML = '<div class="ui-wrap"><div class="at-head"><div><div class="eyebrow">§ The Atlas</div><h1>Every strategy, with the maths</h1>' +
+      view.innerHTML = '<div class="ui-wrap"><div class="at-head"><div><h1>The Atlas: every strategy, with the maths</h1>' +
         '<p class="muted">' + RI.MODELS.length + ' models, ' + RI.FEATURES.length + ' feature recipes, ' + RI.VALIDATION.length + ' validation schemes and ' + RI.METRICS.length + ' metrics for predicting from historical data.</p></div>' +
         (tab !== 'compare' ? '<input type="search" class="at-search" data-q placeholder="search the atlas…" value="' + esc(q) + '" aria-label="Search the atlas">' : '') + '</div>' +
         '<nav class="ui-tabs">' + TABS.map(function (t) { return '<a href="#atlas' + (t[0] ? '/' + t[0] : '') + '" class="' + (t[0] === tab ? 'on' : '') + '">' + UI.icon(t[2]) + t[1] + (counts[t[0]] ? ' <span class="count">' + counts[t[0]] + '</span>' : '') + '</a>'; }).join('') + '</nav>' +
@@ -789,7 +789,7 @@
         }).join('') + '</div>';
     }
     function draw() {
-      view.innerHTML = '<div class="ui-wrap"><div class="cs-head"><div><div class="eyebrow">§ The Casebook</div><h1>Every situation, linked to its model</h1>' +
+      view.innerHTML = '<div class="ui-wrap"><div class="cs-head"><div><h1>The Casebook: every situation, linked to its model</h1>' +
         '<p class="muted">' + RI.CASES.length + ' business situations from ' + RI.INDUSTRIES.length + ' industries. Each one names the data you already have, the signals that would sharpen it, ' +
         'the models that fit, how the prediction becomes a decision, and the Python.</p></div>' +
         '<input type="search" class="cs-search" data-q placeholder="safety stock, weather, churn…" value="' + esc(f.q) + '" aria-label="Search the casebook"></div>' +

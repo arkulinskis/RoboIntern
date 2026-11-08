@@ -1,1 +1,6 @@
-<div class="nb-start-wrap"><anvil-component type="Button" name="button" prop:role='["nb-start"]'></anvil-component></div>
+<div class="nb-sample-wrap">
+  <button type="button" class="nb-sample" anvil:on-dom:click="self.sample_click">
+    <anvil-component type="Label" name="name" prop:role='["nb-sample-name"]' bind:text="self.item['name']"></anvil-component>
+    <anvil-component type="Label" name="line" prop:role='["nb-sample-line"]' bind:text="self.item['line']"></anvil-component>
+  </button>
+</div>

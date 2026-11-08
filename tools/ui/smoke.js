@@ -124,7 +124,7 @@
     if (!(await signUp('Smoke Member', 'smoke' + Date.now() + '@example.com', pw))) throw new Error('sign-up failed');
     await sleep(800);
     check('#notebook (empty)', /notebook is empty/);
-    const sample = button(/\S/, '.anvil-role-nb-start');
+    const sample = $('.nb-sample');
     if (!sample) throw new Error('no quick start on the empty notebook');
     sample.click();
     await until(() => location.hash === '#lab' && window.UI_READY && $('[data-save-snippet]'), 'the Lab with a sample', 30000);
