@@ -9,8 +9,8 @@ description: Context, workflow and recipes for RoboIntern (folder RoboIntern-for
 Six tasks: forecast, regression, binary, multiclass, **anomaly** (y optional) and **cluster** (y optional). A spec flag **tune** adds an Optuna search; every listing exports as a **Jupyter notebook** (RI.notebook). **The Casebook** links 105 business situations in 10 industries (each one of 11 "shapes") to models, outside signals, decision rules and live code. Members keep listings and data descriptions in a **Notebook** and share them in **the Commons** (forks = citations).
 
 **Where it lives:**
-- Folder `C:\Users\arkvi\Documents\CLAUDE\RoboIntern-forms\` = the git clone of **github.com/arkulinskis/RoboIntern**. "git" layout: the folder *is* the Anvil app. Converted to Forms on branch `forms` (2026-11-08); after the user merges, Anvil pulls `master` and pushing is the deploy. Live: https://robointern.com.
-- The old JavaScript source folder `C:\Users\arkvi\Documents\CLAUDE\RoboIntern` (web/ + tools/deploy.py) is the pre-Forms version: retire it after the merge (CONVERT.md step 5), never deploy from it again.
+- Folder `C:\Users\arkvi\Documents\CLAUDE\RoboIntern-forms\` = the git clone of **github.com/arkulinskis/RoboIntern**. "git" layout: the folder *is* the Anvil app. Native Forms on master since 2026-11-08 (forms branch merged); Anvil pulls `master` and pushing is the deploy. Live: https://robointern.com.
+- The old JavaScript source folder `C:\Users\arkvi\Documents\CLAUDE\RoboIntern` (web/ + tools/deploy.py) is the pre-Forms version, retired 2026-11-08 (RETIRED.md; its deploy.py refuses to run): never deploy from it.
 - Made like `APP_MAKER\template-forms`. Anvil's agent skills describe the same model (APP_MAKER/ANVIL_NOTES.md, "Native Anvil Forms").
 - **README.md** lists every feature. Keep it up to date. **APP_MAP.md** is the code map (regenerate after changes).
 
