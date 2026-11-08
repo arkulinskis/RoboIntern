@@ -8,6 +8,7 @@ Rules every callable follows:
 """
 import datetime as dt
 import re
+import typing
 
 import anvil.server
 import anvil.users
@@ -95,7 +96,7 @@ def rate_limited(key, limit, seconds):
               if (stamp - dt.datetime.fromisoformat(t)).total_seconds() < seconds]
     if len(recent) >= limit:
         return True
-    anvil.server.session[store] = recent + [stamp.isoformat()]
+    typing.cast(dict, anvil.server.session)[store] = recent + [stamp.isoformat()]
     return False
 
 

@@ -1,0 +1,8 @@
+<a class="ui-card lp-case" href="#cases">
+  <anvil-component type="Label" name="no" prop:role='["ri-listing-no"]'></anvil-component>
+  <anvil-component type="Label" name="title" prop:role='["lp-case-h"]' bind:text="self.item['name']"></anvil-component>
+  <anvil-component type="Label" name="question" prop:role='["lp-case-q"]' bind:text="self.item['q']"></anvil-component>
+  <div class="lp-sig"><span class="lbl">history</span><anvil-component type="RepeatingPanel" name="cols_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component></div>
+  <div class="lp-sig plus"><span class="lbl">+ signals</span><anvil-component type="RepeatingPanel" name="sig_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component></div>
+  <div class="lp-sig"><span class="lbl">model</span><anvil-component type="Label" name="model" prop:role='["lp-sig-model"]' bind:text="self.item['model']"></anvil-component></div>
+</a>

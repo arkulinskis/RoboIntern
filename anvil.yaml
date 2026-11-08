@@ -290,56 +290,62 @@ metadata:
   title: 'RoboIntern: pick the right machine-learning model, with code'
 name: RoboIntern
 native_deps:
-  head_html: "<script src=\"_/theme/legal-kit.js?v=808cbe022d\"></script>\n<!-- seo:start (APP_MAKER/seo: edit seo/apps/robointern.json\
-    \ and run seo.py, not here) -->\n<link rel=\"canonical\" href=\"https://robointern.com/\">\n<meta name=\"robots\" content=\"\
-    index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\">\n<meta name=\"keywords\" content=\"which\
-    \ machine learning model, model selection guide, time series forecasting python, regression vs classification, machine\
-    \ learning code generator, train.py predict.py, anomaly detection model, ML for beginners, forecasting model comparison\"\
-    >\n<meta name=\"author\" content=\"Arkvital\">\n<meta property=\"og:type\" content=\"website\">\n<meta property=\"og:site_name\"\
-    \ content=\"RoboIntern\">\n<meta property=\"og:title\" content=\"RoboIntern: pick the right machine-learning model, with\
-    \ code\">\n<meta property=\"og:description\" content=\"Describe your data as a list of columns; RoboIntern ranks the right\
-    \ machine-learning models, explains the maths, and writes the Python to train and predict.\">\n<meta property=\"og:locale\"\
-    \ content=\"en_CA\">\n<meta property=\"og:url\" content=\"https://robointern.com/\">\n<meta property=\"og:image\" content=\"\
-    https://robointern.com/_/theme/og-image.png\">\n<meta property=\"og:image:width\" content=\"1200\"><meta property=\"og:image:height\"\
-    \ content=\"630\">\n<meta property=\"og:image:alt\" content=\"RoboIntern: A field guide to predictive models, with the\
-    \ Python included\">\n<meta name=\"twitter:card\" content=\"summary_large_image\">\n<meta name=\"twitter:title\" content=\"\
-    RoboIntern: pick the right machine-learning model, with code\">\n<meta name=\"twitter:description\" content=\"Describe\
-    \ your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the\
-    \ Python to train and predict.\">\n<meta name=\"twitter:image\" content=\"https://robointern.com/_/theme/og-image.png\"\
-    >\n<link rel=\"alternate\" type=\"text/plain\" title=\"RoboIntern for AI assistants\" href=\"https://robointern.com/llms.txt\"\
-    >\n<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@graph\": [{\"@type\": \"WebApplication\"\
-    , \"@id\": \"https://robointern.com/#app\", \"name\": \"RoboIntern\", \"url\": \"https://robointern.com/\", \"description\"\
-    : \"Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and\
-    \ writes the Python to train and predict.\", \"image\": \"https://robointern.com/_/theme/og-image.png\", \"inLanguage\"\
-    : \"en\", \"publisher\": {\"@id\": \"https://arkvital.com/#org\"}, \"keywords\": \"which machine learning model, model\
-    \ selection guide, time series forecasting python, regression vs classification, machine learning code generator, train.py\
-    \ predict.py, anomaly detection model, ML for beginners, forecasting model comparison\", \"applicationCategory\": \"DeveloperApplication\"\
-    , \"operatingSystem\": \"Any (web browser)\", \"browserRequirements\": \"Requires JavaScript and a modern web browser\"\
-    , \"featureList\": [\"Paste a header row; column types and roles are guessed\", \"Forecasting, regression, classification,\
-    \ anomaly detection and clustering\", \"A visible scoring formula that ranks every model that fits\", \"Plain explanations\
-    \ of the maths behind each model\", \"train.py, predict.py and requirements.txt, or a Jupyter notebook\", \"Optional cross-validated\
-    \ tuning with Optuna\"], \"audience\": {\"@type\": \"Audience\", \"audienceType\": \"Analysts, developers and students\
-    \ who need to predict from historical data\"}}, {\"@type\": \"WebSite\", \"@id\": \"https://robointern.com/#site\", \"\
-    url\": \"https://robointern.com/\", \"name\": \"RoboIntern\", \"publisher\": {\"@id\": \"https://arkvital.com/#org\"}},\
-    \ {\"@type\": \"Organization\", \"@id\": \"https://arkvital.com/#org\", \"name\": \"Arkvital\", \"url\": \"https://arkvital.com\"\
-    , \"email\": \"arkvital@outlook.com\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Montreal\",\
-    \ \"addressRegion\": \"QC\", \"addressCountry\": \"CA\"}}]}</script>\n<!-- seo:end -->\n<meta name=\"viewport\" content=\"\
-    width=device-width, initial-scale=1, viewport-fit=cover\">\n<meta name=\"theme-color\" content=\"#faf8f2\">\n<meta name=\"\
-    apple-mobile-web-app-capable\" content=\"yes\">\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link\
-    \ rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<link href=\"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap\"\
-    \ rel=\"stylesheet\">\n<!-- KaTeX typesets the equations in the Atlas (window.katex; pages fall back to plain TeX if it\
-    \ is missing). -->\n<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css\"\
-    >\n<script defer src=\"https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js\"></script>\n<link id=\"ui-favicon\"\
-    \ rel=\"icon\" type=\"image/svg+xml\" href=\"_/theme/icon.svg?v=a902cbb5fb\">\n<link rel=\"apple-touch-icon\" href=\"\
-    _/theme/icon-180.png?v=a902cbb5fb\">\n<script>\n/* Keep our tab icon: Anvil adds its own <link rel=\"icon\">, so drop\
-    \ any other icon link. */\n(function () {\n  function keep() {\n    var ours = document.getElementById('ui-favicon');\n\
-    \    if (!ours) return;\n    document.querySelectorAll('link[rel~=\"icon\"]').forEach(function (l) { if (l !== ours) l.remove();\
-    \ });\n  }\n  keep();\n  document.addEventListener('DOMContentLoaded', keep);\n  window.addEventListener('load', keep);\n\
-    })();\n</script>\n\n<!-- Prepsto feedback panel: every \"Submit feedback\" link and button opens it (it is the only feedback\
-    \ channel). No floating button, no cookies, nothing loads until it is opened. Codes: APP_MAKER/prepsto-links.json -->\n\
-    <script src=\"https://prepsto.com/_/theme/widget.js\" data-prepsto=\"dqt9qx8\" data-button=\"false\" data-label=\"Submit\
-    \ feedback\" async></script>\n<link rel=\"stylesheet\" href=\"_/theme/app.css?v=f7a8daff90\">\n<script src=\"_/theme/app.js?v=e763d1c9e5\"\
-    ></script>\n"
+  head_html: |
+    <script src="_/theme/legal-kit.js?v=808cbe022d"></script>
+    <!-- seo:start (APP_MAKER/seo: edit seo/apps/robointern.json and run seo.py, not here) -->
+    <link rel="canonical" href="https://robointern.com/">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="keywords" content="which machine learning model, model selection guide, time series forecasting python, regression vs classification, machine learning code generator, train.py predict.py, anomaly detection model, ML for beginners, forecasting model comparison">
+    <meta name="author" content="Arkvital">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="RoboIntern">
+    <meta property="og:title" content="RoboIntern: pick the right machine-learning model, with code">
+    <meta property="og:description" content="Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the Python to train and predict.">
+    <meta property="og:locale" content="en_CA">
+    <meta property="og:url" content="https://robointern.com/">
+    <meta property="og:image" content="https://robointern.com/_/theme/og-image.png">
+    <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="RoboIntern: A field guide to predictive models, with the Python included">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="RoboIntern: pick the right machine-learning model, with code">
+    <meta name="twitter:description" content="Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the Python to train and predict.">
+    <meta name="twitter:image" content="https://robointern.com/_/theme/og-image.png">
+    <link rel="alternate" type="text/plain" title="RoboIntern for AI assistants" href="https://robointern.com/llms.txt">
+    <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebApplication", "@id": "https://robointern.com/#app", "name": "RoboIntern", "url": "https://robointern.com/", "description": "Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the Python to train and predict.", "image": "https://robointern.com/_/theme/og-image.png", "inLanguage": "en", "publisher": {"@id": "https://arkvital.com/#org"}, "keywords": "which machine learning model, model selection guide, time series forecasting python, regression vs classification, machine learning code generator, train.py predict.py, anomaly detection model, ML for beginners, forecasting model comparison", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (web browser)", "browserRequirements": "Requires JavaScript and a modern web browser", "featureList": ["Paste a header row; column types and roles are guessed", "Forecasting, regression, classification, anomaly detection and clustering", "A visible scoring formula that ranks every model that fits", "Plain explanations of the maths behind each model", "train.py, predict.py and requirements.txt, or a Jupyter notebook", "Optional cross-validated tuning with Optuna"], "audience": {"@type": "Audience", "audienceType": "Analysts, developers and students who need to predict from historical data"}}, {"@type": "WebSite", "@id": "https://robointern.com/#site", "url": "https://robointern.com/", "name": "RoboIntern", "publisher": {"@id": "https://arkvital.com/#org"}}, {"@type": "Organization", "@id": "https://arkvital.com/#org", "name": "Arkvital", "url": "https://arkvital.com", "email": "arkvital@outlook.com", "address": {"@type": "PostalAddress", "addressLocality": "Montreal", "addressRegion": "QC", "addressCountry": "CA"}}]}</script>
+    <!-- seo:end -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#faf8f2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+    <!-- KaTeX typesets the equations in the Atlas (window.katex; pages fall back to plain TeX if it is missing). -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <link id="ui-favicon" rel="icon" type="image/svg+xml" href="_/theme/icon.svg?v=1b5a704fd3">
+    <link rel="apple-touch-icon" href="_/theme/icon-180.png?v=60f2938878">
+    <script>
+    /* Keep our tab icon: Anvil adds its own <link rel="icon">, so drop any other icon link. */
+    (function () {
+      function keep() {
+        var ours = document.getElementById('ui-favicon');
+        if (!ours) return;
+        document.querySelectorAll('link[rel~="icon"]').forEach(function (l) { if (l !== ours) l.remove(); });
+      }
+      keep();
+      document.addEventListener('DOMContentLoaded', keep);
+      window.addEventListener('load', keep);
+    })();
+    </script>
+
+    <!-- Prepsto feedback panel: every "Submit feedback" link and button opens it (it is the only feedback channel). No floating button, no cookies, nothing loads until it is opened. Codes: APP_MAKER/prepsto-links.json -->
+    <script src="https://prepsto.com/_/theme/widget.js" data-prepsto="dqt9qx8" data-button="false" data-label="Submit feedback" async></script>
+    <link rel="stylesheet" href="_/theme/icons.css?v=4e47536245">
+    <link rel="stylesheet" href="_/theme/app.css?v=fd57b564e6">
+    <script src="_/theme/app-kit.js?v=814019aad5"></script>
+    <script src="_/theme/ri-kit.js?v=45ba3d34b9"></script>
+    <script src="_/theme/ri-engine.js?v=07fc167c47"></script>
+    <script src="_/theme/ri-screens.js?v=900ad9f008"></script>
 package_name: RoboIntern
 runtime_options:
   client_version: '3'
@@ -367,5 +373,5 @@ services:
   server_config: {}
   source: /runtime/services/google.yml
 startup:
-  module: Main
-  type: form
+  module: startup
+  type: module

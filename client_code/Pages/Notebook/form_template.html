@@ -1,0 +1,48 @@
+<anvil-form layout="RoboIntern.Layouts.Shell">
+  <anvil-block slot="content">
+    <div class="ui-wrap">
+      <div class="nb-head">
+        <div>
+          <anvil-component type="Label" name="title" prop:role='["page-title"]'></anvil-component>
+          <div class="nb-stats"><anvil-component type="RoboIntern.Components.Tex" name="stats"></anvil-component></div>
+        </div>
+        <a class="ui-btn primary" href="#lab"><i class="ic ic-flask"></i>New in the Lab</a>
+      </div>
+      <div class="nb-grid">
+        <div>
+          <div anvil:name="list_part">
+            <div class="nb-tools">
+              <anvil-component type="TextBox" name="search_box" prop:placeholder="search listings…" prop:type="search" prop:role='["nb-search"]'></anvil-component>
+              <div class="ui-seg" role="group" aria-label="Show">
+                <anvil-component type="Button" name="f_all" prop:text="All" prop:role='["seg", "on"]'></anvil-component>
+                <anvil-component type="Button" name="f_starred" prop:text="★ Starred" prop:role='["seg"]'></anvil-component>
+                <anvil-component type="Button" name="f_public" prop:text="Public" prop:role='["seg"]'></anvil-component>
+              </div>
+            </div>
+            <anvil-component type="RepeatingPanel" name="list_panel" prop:item_template="RoboIntern.Items.NoteItem" prop:role='["nb-list"]'></anvil-component>
+            <div class="ui-empty" anvil:name="no_match"><i class="ic ic-search"></i><h3>No listing matches</h3></div>
+          </div>
+          <div class="ui-empty nb-empty" anvil:name="empty_part">
+            <i class="ic ic-notebook"></i>
+            <h3>Your notebook is empty, for now</h3>
+            <p class="muted">Describe a dataset in the Lab and save the code it writes: it lands here, ready to copy, edit, or share. Pick a sample to see how it works:</p>
+            <anvil-component type="RepeatingPanel" name="sample_panel" prop:item_template="RoboIntern.Items.SampleCard" prop:role='["nb-start"]'></anvil-component>
+            <p class="small muted nb-empty-more">Or browse what others shared in the <a href="#commons">Commons</a>.</p>
+          </div>
+        </div>
+        <aside class="nb-side">
+          <div class="ui-card nb-lemma">
+            <h3 class="nb-lemma-h">Lemma of the day: <a anvil:name="lemma_link" href="#atlas"><anvil-component type="Label" name="lemma_name" prop:role='["inline"]'></anvil-component></a></h3>
+            <anvil-component type="RoboIntern.Components.Tex" name="lemma_eq" prop:display="true"></anvil-component>
+            <p class="muted" anvil:dom-node="lemma_text"></p>
+          </div>
+          <div class="ui-card">
+            <h3 class="nb-side-h">Data descriptions</h3>
+            <anvil-component type="RepeatingPanel" name="ds_panel" prop:item_template="RoboIntern.Items.DatasetRow" prop:role='["nb-ds"]'></anvil-component>
+            <p class="muted small nb-ds-none" anvil:name="no_ds">Save a description from the Lab (§1) to reuse your columns and roles.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </anvil-block>
+</anvil-form>

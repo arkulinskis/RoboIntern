@@ -1,0 +1,19 @@
+---
+custom_component: true
+properties:
+  - name: tex
+    type: string
+    default_value: ""
+    description: The formula in TeX (KaTeX draws it; plain TeX shows until KaTeX has loaded)
+  - name: display
+    type: boolean
+    default_value: false
+    description: Display style (a centred block formula) instead of inline
+toolbox_item:
+  title: Formula
+  group: RoboIntern
+help_text: |
+  A typeset formula: RI.tex from theme/assets/ri-engine.js (KaTeX from cdnjs, loaded with defer). Draws again once
+  KaTeX arrives.
+---
+<div class="ri-tex-host"><div class="ri-tex" anvil:dom-node="box"></div></div>

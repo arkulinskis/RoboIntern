@@ -1,0 +1,14 @@
+---
+custom_component: true
+events:
+  - name: edit_code
+    description: The owner pressed Edit on the code (event_args file = train, predict or requirements)
+    default_event: true
+toolbox_item:
+  title: Code listing
+  group: RoboIntern
+help_text: |
+  A generated listing with file tabs (train.py, predict.py, requirements.txt), Copy, Download and .ipynb buttons:
+  RI.codeBlock + RI.wireCode from theme/assets/ri-engine.js. Call show(files, active, meta, can_edit).
+---
+<div class="ri-code-host"><div anvil:dom-node="host"></div></div>

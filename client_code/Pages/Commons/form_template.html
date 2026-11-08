@@ -1,0 +1,37 @@
+<anvil-form layout="RoboIntern.Layouts.Shell">
+  <anvil-block slot="content">
+    <div class="ui-wrap">
+      <div class="ui-page-head">
+        <div>
+          <h1>The Commons: listings people shared</h1>
+          <p class="muted">Real data descriptions with the code RoboIntern wrote for them. Fork one into your notebook, or open it in the Lab and make it yours.</p>
+        </div>
+      </div>
+      <div class="cm-tools">
+        <anvil-component type="TextBox" name="search_box" prop:placeholder="search titles, notes, tags…" prop:type="search" prop:role='["cm-search"]'></anvil-component>
+        <div class="ui-seg" role="group" aria-label="Task">
+          <anvil-component type="Button" name="t_all" prop:text="All" prop:role='["seg", "on"]'></anvil-component>
+          <anvil-component type="Button" name="t_forecast" prop:role='["seg"]'></anvil-component>
+          <anvil-component type="Button" name="t_regression" prop:role='["seg"]'></anvil-component>
+          <anvil-component type="Button" name="t_binary" prop:role='["seg"]'></anvil-component>
+          <anvil-component type="Button" name="t_multiclass" prop:role='["seg"]'></anvil-component>
+          <anvil-component type="Button" name="t_anomaly" prop:role='["seg"]'></anvil-component>
+          <anvil-component type="Button" name="t_cluster" prop:role='["seg"]'></anvil-component>
+        </div>
+        <anvil-component type="DropDown" name="model_box" prop:role='["cm-model"]'></anvil-component>
+        <div class="ui-seg" role="group" aria-label="Sort">
+          <anvil-component type="Button" name="s_new" prop:text="Newest" prop:role='["seg", "on"]'></anvil-component>
+          <anvil-component type="Button" name="s_cited" prop:text="Most cited" prop:role='["seg"]'></anvil-component>
+        </div>
+      </div>
+      <anvil-component type="Label" name="count" prop:role='["fine-print"]'></anvil-component>
+      <anvil-component type="RepeatingPanel" name="list_panel" prop:item_template="RoboIntern.Items.CommonsCard" prop:role='["cm-grid"]'></anvil-component>
+      <div class="ui-empty" anvil:name="empty">
+        <i class="ic ic-users"></i>
+        <anvil-component type="Label" name="empty_title" prop:role='["empty-h"]'></anvil-component>
+        <p>Save a listing from the Lab and tick “Share in the Commons”.</p>
+        <a class="ui-btn" href="#lab"><i class="ic ic-flask"></i>Open the Lab</a>
+      </div>
+    </div>
+  </anvil-block>
+</anvil-form>

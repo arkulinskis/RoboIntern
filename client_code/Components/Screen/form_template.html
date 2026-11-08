@@ -1,0 +1,15 @@
+---
+custom_component: true
+properties:
+  - name: screen
+    type: string
+    default_value: ""
+    description: Which engine screen to show (lab, atlas or cases in theme/assets/ri-screens.js)
+toolbox_item:
+  title: Engine screen
+  group: RoboIntern
+help_text: |
+  One of RoboIntern's JavaScript screens (the Lab, the Atlas, the Casebook), mounted when the component appears and
+  destroyed when it leaves. Call mount(args) with the address parts.
+---
+<div class="ri-screen-host"><div anvil:dom-node="host"></div></div>

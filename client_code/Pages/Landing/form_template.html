@@ -1,0 +1,136 @@
+<anvil-form layout="RoboIntern.Layouts.Shell">
+  <anvil-block slot="content">
+    <div class="lp">
+      <section class="lp-hero">
+        <div class="ui-wrap">
+          <div>
+            <h1>Describe your data.<br><em>Get the model, and the Python.</em></h1>
+            <p class="lp-lead">Paste your table’s header row and mark what matters: the target, the time column, the drivers you trust. RoboIntern ranks the machine-learning models that fit, explains the maths behind each one, and writes train.py and predict.py for you to run.</p>
+            <div class="lp-cta">
+              <a class="ui-btn primary lg" href="#lab">Start in the Lab <i class="ic ic-arrow"></i></a>
+              <a class="ui-btn lg" href="#atlas"><i class="ic ic-book"></i>Browse the Atlas</a>
+            </div>
+            <div class="lp-proof">
+              <span><i class="ic ic-check"></i><anvil-component type="Label" name="proof_models" prop:role='["inline"]'></anvil-component></span>
+              <span><i class="ic ic-check"></i><anvil-component type="Label" name="proof_cases" prop:role='["inline"]'></anvil-component></span>
+              <span><i class="ic ic-check"></i>Your data never leaves the browser</span>
+            </div>
+            <div anvil:name="signup_box"><a class="lp-signup" href="#auth/signup">Free account: keep a notebook and share in the Commons</a></div>
+          </div>
+          <div class="lp-art" aria-hidden="true">
+            <div class="lp-eq"><anvil-component type="RoboIntern.Components.Tex" name="hero_eq"></anvil-component></div>
+            <div class="lp-paper">
+              <div class="lp-cap"><span>Figure 1. sales.csv, described</span><span>§1–§5</span></div>
+              <div class="lp-cols">
+                <div><span class="ri-role time">t</span><br><span class="n">date</span></div>
+                <div><span class="ri-role group">g</span><br><span class="n">store</span></div>
+                <div class="k"><span class="ri-role feature">x<sub>1</sub></span><br><span class="n">promo</span> ★</div>
+                <div><span class="ri-role feature">x<sub>2</sub></span><br><span class="n">temp</span></div>
+                <div><span class="ri-role target">y</span><br><span class="n">sales</span></div>
+              </div>
+              <div class="lp-arrow">⟹ ranked for your data</div>
+              <div class="lp-rank">
+                <div class="on"><span class="r">1</span><span>LightGBM</span><span class="s">81.4</span><span></span><i><b style="width:81.4%"></b></i></div>
+                <div><span class="r">2</span><span>CatBoost</span><span class="s">78.9</span><span></span><i><b style="width:78.9%"></b></i></div>
+                <div><span class="r">3</span><span>SARIMAX</span><span class="s">64.2</span><span></span><i><b style="width:64.2%"></b></i></div>
+                <div><span class="r">4</span><span>Seasonal naïve</span><span class="s">41.0</span><span></span><i><b style="width:41%"></b></i></div>
+              </div>
+              <div class="lp-code"><span class="k">def</span> add_features(df):
+    <span class="k">for</span> k <span class="k">in</span> LAGS:  <span class="c"># 1, 7, 14, 28</span>
+        df[<span class="s">f"lag_{k}"</span>] = g[TARGET].shift(k)
+    df[<span class="s">"promo_delta"</span>] = df.promo - g.promo.shift(<span class="n">1</span>)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-section ytf" id="watch">
+        <div class="ui-wrap">
+          <div class="ytf-in">
+            <div class="ytf-copy">
+              <h2>See RoboIntern in about a minute</h2>
+              <p>A short video tour of what RoboIntern does and how it works.</p>
+              <a class="ytf-link" href="https://www.youtube.com/watch?v=-ZsVXlSr6tI" target="_blank" rel="noopener"><svg viewBox="0 0 28 20" width="20" height="14" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0033"/><path d="M11.2 5.8v8.4l7.3-4.2z" fill="#fff"/></svg>Watch on YouTube &#8599;</a>
+            </div>
+            <div>
+              <div class="ytf-frame" anvil:dom-node="yt_frame">
+                <button type="button" class="ytf-cover" anvil:dom-node="yt_cover" aria-label="Play the RoboIntern video (1:15)">
+                  <img src="_/theme/yt-cover.jpg" alt="" loading="lazy" decoding="async" width="960" height="540">
+                  <span class="ytf-play" aria-hidden="true"><svg viewBox="0 0 68 48" width="68" height="48"><path d="M66.5 7.7a8.5 8.5 0 0 0-6-6C55.3.3 34 .3 34 .3s-21.3 0-26.5 1.4a8.5 8.5 0 0 0-6 6C.1 13 .1 24 .1 24s0 11 1.4 16.3a8.5 8.5 0 0 0 6 6c5.2 1.4 26.5 1.4 26.5 1.4s21.3 0 26.5-1.4a8.5 8.5 0 0 0 6-6C67.9 35 67.9 24 67.9 24s0-11-1.4-16.3z" fill="#FF0033"/><path d="M45 24 27 14v20z" fill="#fff"/></svg></span>
+                  <span class="ytf-len">1:15</span>
+                </button>
+              </div>
+              <p class="ytf-note">The video loads from YouTube when you press play.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-section" id="how">
+        <div class="ui-wrap">
+          <div class="lp-head"><h2>How it works</h2><p>No uploads, no notebooks to configure. Lists in, code out.</p></div>
+          <div class="lp-steps">
+            <div class="ui-card lp-step"><h3>Paste the header</h3><p class="muted">A header row, or a few rows of your CSV or spreadsheet. Types and roles are guessed: date → time t, sales → target y.</p></div>
+            <div class="ui-card lp-step"><h3>Mark what matters</h3><p class="muted">One click per column for its role, a ★ for your key drivers, a tick for drivers you know in advance. Drag a point on a simplex to trade accuracy, interpretability and speed.</p></div>
+            <div class="ui-card lp-step"><h3>Run the code</h3><p class="muted">Pick from the ranked models and copy train.py, predict.py and requirements.txt. They load your CSV, build the features, validate honestly, and save a model you can use.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-section">
+        <div class="ui-wrap">
+          <div class="lp-head"><h2>What’s inside</h2></div>
+          <div class="lp-feats">
+            <div class="lp-feature"><i class="ic ic-flask"></i><h3>The Lab</h3><p>A recommender with a visible scoring formula: you see exactly why LightGBM beats ARIMA for your data, and when it doesn’t.</p></div>
+            <div class="lp-feature"><i class="ic ic-book"></i><h3>The Atlas</h3><p>Every model with its definition, objective, intuition, assumptions, hyperparameters and complexity, typeset properly.</p></div>
+            <div class="lp-feature"><i class="ic ic-cases"></i><h3>The Casebook</h3><anvil-component type="Label" name="feat_cases" prop:role='["lp-p"]'></anvil-component></div>
+            <div class="lp-feature"><i class="ic ic-sliders"></i><h3>Feature development</h3><p>Lags, rolling windows, Fourier terms, target encoding, known-ahead vs. past-only drivers, each with the leakage trap it avoids.</p></div>
+            <div class="lp-feature"><i class="ic ic-grid"></i><h3>Validation &amp; metrics</h3><p>Expanding windows, purged splits, MASE, pinball loss, coverage, with fold diagrams.</p></div>
+            <div class="lp-feature"><i class="ic ic-notebook"></i><h3>Your notebook</h3><p>Save listings and data descriptions, edit the code, star the good ones, and reopen any of them in the Lab.</p></div>
+            <div class="lp-feature"><i class="ic ic-users"></i><h3>The Commons</h3><p>Share a listing and fork other people’s. Forks count as citations, as they should.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-section">
+        <div class="ui-wrap">
+          <div class="lp-head"><h2>The Casebook</h2><anvil-component type="Label" name="cases_lead" prop:role='["lp-head-p"]'></anvil-component></div>
+          <anvil-component type="RepeatingPanel" name="industry_panel" prop:item_template="RoboIntern.Items.IndustryTile" prop:role='["lp-inds"]'></anvil-component>
+          <anvil-component type="RepeatingPanel" name="case_panel" prop:item_template="RoboIntern.Items.CaseTeaser" prop:role='["lp-cases"]'></anvil-component>
+          <p class="lp-more"><a class="ui-btn" href="#cases"><i class="ic ic-cases"></i>Open the Casebook <i class="ic ic-arrow"></i></a></p>
+        </div>
+      </section>
+
+      <section class="lp-section">
+        <div class="ui-wrap">
+          <div class="lp-head"><h2>Typeset, not hand-waved</h2><p>Every entry in the Atlas states its model, its objective and its assumptions.</p></div>
+          <anvil-component type="RepeatingPanel" name="math_panel" prop:item_template="RoboIntern.Items.MathCard" prop:role='["lp-math"]'></anvil-component>
+          <p class="lp-more"><a class="ui-btn" href="#atlas"><anvil-component type="Label" name="all_models" prop:role='["inline"]'></anvil-component> <i class="ic ic-arrow"></i></a></p>
+        </div>
+      </section>
+
+      <section class="lp-section">
+        <div class="ui-wrap">
+          <div class="lp-head"><h2>Questions</h2></div>
+          <div class="lp-faq">
+            <details><summary>Is there a limit to what machine learning can do in my industry?</summary><anvil-component type="Label" name="faq_limit" prop:role='["lp-faq-p"]'></anvil-component></details>
+            <details><summary>Does RoboIntern run my data or train anything?</summary><p>No. It’s a lookup dictionary with a code writer. Parsing happens in your browser; you run the Python on your own machine, where your data already is.</p></details>
+            <details><summary>What do you store?</summary><p>Only what you save: listing titles, notes, the code, and the column names, types and roles of your data description. Never the values in your table.</p></details>
+            <details><summary>Which libraries does the code use?</summary><p>pandas and scikit-learn throughout, plus XGBoost, LightGBM, CatBoost, statsmodels, Prophet or PyTorch when the model needs them. requirements.txt lists exactly what to install.</p></details>
+            <details><summary>Is the generated code any good?</summary><p>It is careful where it counts: time-ordered splits, a seasonal-naïve benchmark, MASE, lags that never peek at the future, conformal intervals and permutation importance. Every model’s listing is run end to end on test data before release. It is still a starting point: read it and tune it.</p></details>
+            <details><summary>Is it free?</summary><p>Yes. The Atlas, the Lab and the code are free without an account. A free account adds your notebook and the Commons.</p></details>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-section">
+        <div class="ui-wrap">
+          <div class="lp-band">
+            <div><h2>Your intern is ready.</h2><p>Paste a header row and see what it suggests. No sign-up needed.</p></div>
+            <a class="ui-btn lg" href="#lab">Start in the Lab</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </anvil-block>
+</anvil-form>

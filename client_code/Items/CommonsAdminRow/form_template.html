@@ -1,0 +1,17 @@
+<div class="ui-item ad-cm-row">
+  <div class="grow">
+    <div class="meta">
+      <anvil-component type="Label" name="model" prop:role='["badge"]'></anvil-component>
+      <anvil-component type="Label" name="demo" prop:role='["badge"]' prop:text="demo"></anvil-component>
+      <anvil-component type="Label" name="author" prop:role='["strong"]' bind:text="self.item['author']"></anvil-component>
+      <anvil-component type="Label" name="when"></anvil-component>
+    </div>
+    <p class="msg"><a href="#commons" anvil:name="title_link"><anvil-component type="Label" name="title" prop:role='["inline"]' bind:text="self.item['title']"></anvil-component></a></p>
+    <anvil-component type="Label" name="notes" prop:role='["fine-print"]' bind:text="self.item['notes']"></anvil-component>
+    <div class="ui-row">
+      <anvil-component type="Button" name="unpublish_button" prop:text="Unpublish" prop:role='["btn", "btn-sm", "ic-lock"]'></anvil-component>
+      <span class="ui-spacer"></span>
+      <anvil-component type="Button" name="delete_button" prop:text="Delete" prop:role='["btn", "btn-sm", "btn-danger", "ic-trash"]'></anvil-component>
+    </div>
+  </div>
+</div>

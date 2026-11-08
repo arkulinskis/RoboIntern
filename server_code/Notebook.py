@@ -141,7 +141,7 @@ def save_snippet(snippet_id, data):
         r = _own(app_tables.snippets, snippet_id, me)
         if r is None:
             return C.fail("That listing isn't yours, or it was deleted.")
-    ch = {}
+    ch: dict = {}
     if "title" in data or r is None:
         ch["title"] = C.text(data.get("title"), 120)
         if len(ch["title"]) < 2:
@@ -171,7 +171,7 @@ def save_snippet(snippet_id, data):
             return C.fail("Your notebook holds %d listings already. Delete a few first." % MAX_SNIPPETS)
         if C.rate_limited("save_snippet", 60, 3600):
             return C.fail("That's a lot of listings in one hour. Please try again later.")
-        base = {"notes": "", "tags": [], "starred": False, "is_public": False, "files": None}
+        base: dict = {"notes": "", "tags": [], "starred": False, "is_public": False, "files": None}
         base.update(ch)
         r = app_tables.snippets.add_row(owner=me, cites=0, created=C.now(), is_demo=False, **base)
     else:

@@ -1,0 +1,18 @@
+<div class="nb-item-wrap">
+  <article class="ui-card nb-item">
+    <div>
+      <div class="ri-meta">
+        <anvil-component type="Label" name="no" prop:role='["ri-listing-no"]'></anvil-component>
+        <anvil-component type="RepeatingPanel" name="meta_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component>
+      </div>
+      <h3 class="nb-title"><a anvil:name="title_link" href="#notebook"><anvil-component type="Label" name="title" prop:role='["inline"]' bind:text="self.item['title']"></anvil-component></a></h3>
+      <anvil-component type="Label" name="notes" prop:role='["nb-notes"]' bind:text="self.item['notes']"></anvil-component>
+      <div class="ri-meta nb-tags">
+        <anvil-component type="RepeatingPanel" name="tag_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component>
+      </div>
+    </div>
+    <div class="acts">
+      <anvil-component type="Button" name="star_button" prop:text="★" prop:role='["nb-star"]'></anvil-component>
+    </div>
+  </article>
+</div>

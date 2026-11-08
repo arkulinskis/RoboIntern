@@ -1,0 +1,10 @@
+<a class="ui-card ri-card-link cm-card" href="#commons">
+  <div class="ri-meta"><anvil-component type="RepeatingPanel" name="meta_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component></div>
+  <anvil-component type="Label" name="title" prop:role='["cm-title"]' bind:text="self.item['title']"></anvil-component>
+  <anvil-component type="Label" name="notes" prop:role='["cm-notes"]' bind:text="self.item['notes']"></anvil-component>
+  <div class="ri-meta"><anvil-component type="RepeatingPanel" name="tag_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component></div>
+  <div class="cm-foot">
+    <anvil-component type="Label" name="who" prop:role='["inline"]'></anvil-component>
+    <anvil-component type="Label" name="cite" prop:role='["cm-cite"]'></anvil-component>
+  </div>
+</a>

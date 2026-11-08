@@ -1,0 +1,71 @@
+<anvil-form layout="RoboIntern.Layouts.Shell">
+  <anvil-block slot="content">
+    <div class="ui-wrap">
+      <div anvil:name="missing" class="ui-empty">
+        <i class="ic ic-lock"></i>
+        <anvil-component type="Label" name="missing_title" prop:role='["empty-h"]'></anvil-component>
+        <p class="muted">It may have been deleted, or made private by its author.</p>
+        <a class="ui-btn" href="#commons">Browse the Commons</a>
+      </div>
+      <div anvil:name="body">
+        <div class="sn-crumbs"><a anvil:name="back_link" href="#commons"><anvil-component type="Label" name="back_text" prop:role='["inline"]'></anvil-component></a> › listing</div>
+        <div class="sn-head">
+          <div>
+            <div class="ri-meta">
+              <span class="ri-listing-no">Listing</span>
+              <a anvil:name="model_link" href="#atlas"><anvil-component type="Label" name="model_name" prop:role='["inline"]'></anvil-component></a>
+              <anvil-component type="RepeatingPanel" name="badge_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component>
+            </div>
+            <anvil-component type="Label" name="title" prop:role='["sn-title"]'></anvil-component>
+            <div class="ri-meta">
+              <anvil-component type="RepeatingPanel" name="byline_panel" prop:item_template="RoboIntern.Items.Tag" prop:role='["contents"]'></anvil-component>
+              <span anvil:name="fork_line">forked from <a anvil:name="fork_link" href="#commons"><anvil-component type="Label" name="fork_title" prop:role='["inline"]'></anvil-component></a> <anvil-component type="Label" name="fork_author" prop:role='["inline"]'></anvil-component></span>
+            </div>
+          </div>
+          <div class="sn-acts">
+            <anvil-component type="Button" name="star_button" prop:role='["btn", "btn-sm"]'></anvil-component>
+            <anvil-component type="Button" name="public_button" prop:role='["btn", "btn-sm"]'></anvil-component>
+            <anvil-component type="Button" name="meta_button" prop:text="Edit details" prop:role='["btn", "btn-sm", "ic-edit"]'></anvil-component>
+            <anvil-component type="Button" name="fork_button" prop:text="Fork to my notebook" prop:role='["btn", "btn-sm", "btn-primary", "ic-fork"]'></anvil-component>
+            <anvil-component type="Button" name="lab_button" prop:text="Open in the Lab" prop:role='["btn", "btn-sm", "ic-flask"]'></anvil-component>
+            <anvil-component type="Button" name="delete_button" prop:text="Delete" prop:role='["btn", "btn-sm", "btn-ghost", "btn-danger", "btn-icon", "ic-trash"]' prop:tooltip="Delete"></anvil-component>
+          </div>
+        </div>
+        <div class="ri-thm" anvil:name="notes_box"><b>Notes.</b> <anvil-component type="Label" name="notes" prop:role='["sn-notes"]'></anvil-component></div>
+        <div class="sn-grid">
+          <div>
+            <p class="sn-live muted" anvil:name="live_line"><i class="ic ic-refresh"></i> <anvil-component type="Label" name="live_text" prop:role='["inline"]'></anvil-component></p>
+            <div anvil:name="edit_part">
+              <div class="ri-code-bar sn-edit-bar"><anvil-component type="Label" name="edit_file" prop:role='["ri-file-on"]'></anvil-component></div>
+              <anvil-component type="TextArea" name="code_box" prop:role='["sn-edit"]'></anvil-component>
+              <div class="ui-row end sn-edit-acts">
+                <anvil-component type="Button" name="cancel_button" prop:text="Cancel" prop:role='["btn", "btn-ghost"]'></anvil-component>
+                <anvil-component type="Button" name="save_code_button" prop:role='["btn", "btn-primary", "ic-save"]'></anvil-component>
+              </div>
+            </div>
+            <anvil-component type="RoboIntern.Components.CodeBlock" name="code"></anvil-component>
+            <p class="small muted sn-regen" anvil:name="regen_line"><anvil-component type="Button" name="regen_button" prop:text="Regenerate from the description" prop:role='["btn", "btn-sm", "btn-ghost", "ic-refresh"]'></anvil-component> replaces your edits with a fresh listing.</p>
+          </div>
+          <aside class="sn-side">
+            <div class="ui-card">
+              <h3 class="sn-side-h">Data description</h3>
+              <anvil-component type="RoboIntern.Components.Tex" name="notation" prop:display="true"></anvil-component>
+              <anvil-component type="RepeatingPanel" name="cols_panel" prop:item_template="RoboIntern.Items.SpecCol" prop:role='["sn-cols"]'></anvil-component>
+              <anvil-component type="Label" name="freq_line" prop:role='["fine-print", "sn-freq"]'></anvil-component>
+            </div>
+            <div class="ui-card">
+              <h3 class="sn-side-h">How to run it</h3>
+              <ol class="small sn-run">
+                <li>Save the three files in one folder, next to <code><anvil-component type="Label" name="data_file" prop:role='["inline"]'></anvil-component></code>.</li>
+                <li><code>pip install -r requirements.txt</code></li>
+                <li><code>python train.py</code></li>
+                <li><code><anvil-component type="Label" name="predict_cmd" prop:role='["inline"]'></anvil-component></code></li>
+              </ol>
+              <p class="small muted sn-run-note">Prefer notebooks? The <b>.ipynb</b> button above packs all three files into one.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </anvil-block>
+</anvil-form>
