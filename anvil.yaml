@@ -284,10 +284,9 @@ db_schema:
     server: full
     title: Users
 metadata:
-  description: Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths,
-    and writes the Python to train and predict.
-  logo_img: asset:icon-512.png
-  title: 'RoboIntern: pick the right machine-learning model, with code'
+  description: "Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the Python to train and predict."
+  logo_img: "asset:icon-512.png"
+  title: "RoboIntern: pick the right machine-learning model, with code"
 name: RoboIntern
 native_deps:
   head_html: |
@@ -311,7 +310,7 @@ native_deps:
     <meta name="twitter:description" content="Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the Python to train and predict.">
     <meta name="twitter:image" content="https://robointern.com/_/theme/og-image.png">
     <link rel="alternate" type="text/plain" title="RoboIntern for AI assistants" href="https://robointern.com/llms.txt">
-    <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebApplication", "@id": "https://robointern.com/#app", "name": "RoboIntern", "url": "https://robointern.com/", "description": "Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the Python to train and predict.", "image": "https://robointern.com/_/theme/og-image.png", "inLanguage": "en", "publisher": {"@id": "https://arkvital.com/#org"}, "keywords": "which machine learning model, model selection guide, time series forecasting python, regression vs classification, machine learning code generator, train.py predict.py, anomaly detection model, ML for beginners, forecasting model comparison", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (web browser)", "browserRequirements": "Requires JavaScript and a modern web browser", "featureList": ["Paste a header row; column types and roles are guessed", "Forecasting, regression, classification, anomaly detection and clustering", "A visible scoring formula that ranks every model that fits", "Plain explanations of the maths behind each model", "train.py, predict.py and requirements.txt, or a Jupyter notebook", "Optional cross-validated tuning with Optuna"], "audience": {"@type": "Audience", "audienceType": "Analysts, developers and students who need to predict from historical data"}}, {"@type": "WebSite", "@id": "https://robointern.com/#site", "url": "https://robointern.com/", "name": "RoboIntern", "publisher": {"@id": "https://arkvital.com/#org"}}, {"@type": "Organization", "@id": "https://arkvital.com/#org", "name": "Arkvital", "url": "https://arkvital.com", "email": "arkvital@outlook.com", "address": {"@type": "PostalAddress", "addressLocality": "Montreal", "addressRegion": "QC", "addressCountry": "CA"}}]}</script>
+    <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Service", "@id": "https://robointern.com/#app", "name": "RoboIntern", "url": "https://robointern.com/", "description": "Describe your data as a list of columns; RoboIntern ranks the right machine-learning models, explains the maths, and writes the Python to train and predict.", "image": "https://robointern.com/_/theme/og-image.png", "serviceType": "A field guide to predictive models, with the Python included", "provider": {"@id": "https://arkvital.com/#org"}, "areaServed": "Worldwide", "availableChannel": {"@type": "ServiceChannel", "serviceUrl": "https://robointern.com/", "name": "Web browser"}, "availableLanguage": "en", "audience": {"@type": "Audience", "audienceType": "Analysts, developers and students who need to predict from historical data"}}, {"@type": "WebSite", "@id": "https://robointern.com/#site", "url": "https://robointern.com/", "name": "RoboIntern", "publisher": {"@id": "https://arkvital.com/#org"}}, {"@type": "Organization", "@id": "https://arkvital.com/#org", "name": "Arkvital", "url": "https://arkvital.com", "email": "arkvital@outlook.com", "address": {"@type": "PostalAddress", "addressLocality": "Montreal", "addressRegion": "QC", "addressCountry": "CA"}}]}</script>
     <!-- seo:end -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#faf8f2">
