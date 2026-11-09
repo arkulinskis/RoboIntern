@@ -45,7 +45,7 @@ class Snippet(SnippetTemplate):
             box.addEventListener("keydown", self._tab_key)
 
     def _tab_key(self, e):
-        if e.key == "Tab" and not e.shiftKey:
+        if getattr(e, "key", None) == "Tab" and not getattr(e, "shiftKey", False):
             e.preventDefault()
             ta = e.target
             a = ta.selectionStart
