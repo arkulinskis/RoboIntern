@@ -1,0 +1,68 @@
+<anvil-form layout="RoboIntern.Layouts.Shell">
+  <anvil-block slot="content">
+    <div class="ui-wrap">
+      <div class="ui-page-head">
+        <div>
+          <h1>Read my results</h1>
+          <p class="muted">Ran a RoboIntern listing? Paste what train.py printed. You get a plain verdict on the score: is it usable, too weak, or too good to be true?</p>
+        </div>
+      </div>
+      <div class="rs-ctx" anvil:name="ctx_box">
+        <span class="rs-ctx-k">Reading</span>
+        <anvil-component type="Label" name="ctx_text" prop:role='["rs-ctx-text"]'></anvil-component>
+        <a class="rs-ctx-link" anvil:name="ctx_link" href="#lab"><anvil-component type="Label" name="ctx_link_text" prop:role='["inline"]'></anvil-component></a>
+        <anvil-component type="Button" name="ctx_clear" prop:text="Clear" prop:role='["btn", "btn-sm", "btn-ghost"]'></anvil-component>
+      </div>
+      <div class="rs-grid">
+        <div class="rs-main">
+          <div class="rs-paste-wrap">
+            <div class="ri-code-bar rs-paste-bar"><span class="rs-paste-file">train.py output</span></div>
+            <anvil-component type="TextArea" name="paste_box" prop:role='["rs-paste"]' prop:placeholder="1,840 rows, rent_eur: mean 1,012.400, sd 318.250&#10;&#10;Holdout (368 rows):&#10;  MAE   171.2210   (predicting the mean: 222.5170, skill +23.1%)&#10;  …"></anvil-component>
+          </div>
+          <div class="rs-acts">
+            <anvil-component type="Button" name="read_button" prop:text="Read it" prop:role='["btn", "btn-primary", "ic-search"]'></anvil-component>
+            <anvil-component type="Button" name="example_button" prop:text="Try an example" prop:role='["btn", "ic-sparkle"]'></anvil-component>
+            <span class="rs-private"><i class="ic ic-lock"></i>Read in your browser; nothing is sent.</span>
+          </div>
+          <div class="rs-result" anvil:name="result_part">
+            <div class="ri-thm rs-verdict" anvil:name="verdict_box" tabindex="-1">
+              <anvil-component type="Label" name="verdict_title" prop:role='["rs-verdict-h"]'></anvil-component>
+              <anvil-component type="Label" name="verdict_text" prop:role='["rs-verdict-p"]'></anvil-component>
+            </div>
+            <anvil-component type="RepeatingPanel" name="finding_panel" prop:item_template="RoboIntern.Items.Finding" prop:role='["rs-findings"]'></anvil-component>
+            <div class="rs-notes" anvil:name="notes_part">
+              <anvil-component type="Button" name="notes_button" prop:text="Add to notes" prop:role='["btn", "btn-sm", "ic-save"]'></anvil-component>
+              <span class="small muted">Adds a one-line summary of this reading to your listing’s notes.</span>
+            </div>
+          </div>
+          <div class="ui-empty rs-empty" anvil:name="empty_part">
+            <i class="ic ic-target"></i>
+            <h3>Your reading appears here</h3>
+            <p>Run train.py, copy everything it printed, paste it above and press Read it. Nothing to paste yet? Try an example.</p>
+          </div>
+        </div>
+        <aside class="rs-side">
+          <div class="ui-card">
+            <h3 class="rs-side-h">What it checks</h3>
+            <ul class="small rs-checks">
+              <li>Skill against the simple baseline: the mean, or seasonal naïve</li>
+              <li>Accuracy against always saying the majority class</li>
+              <li>ROC AUC below 0.55: a coin flip</li>
+              <li>Too good: AUC or R² of 0.98 and up, or skill of 95%+</li>
+              <li>MASE of 1 or more: seasonal naïve wins</li>
+              <li>Interval coverage against its target</li>
+              <li>One column carrying the whole model</li>
+              <li>Holdouts under 500 rows</li>
+            </ul>
+            <p class="small muted rs-side-note">Written rules, not AI: you can check every verdict yourself.</p>
+          </div>
+          <div class="ui-card">
+            <h3 class="rs-side-h">No listing yet?</h3>
+            <p class="small muted rs-side-note">Describe your table in the Lab and RoboIntern writes train.py for you.</p>
+            <a class="ui-btn sm" href="#lab"><i class="ic ic-flask"></i>Open the Lab</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </anvil-block>
+</anvil-form>

@@ -1,0 +1,67 @@
+<anvil-form layout="RoboIntern.Layouts.Shell">
+  <anvil-block slot="content">
+    <div class="ui-wrap lh-wrap">
+      <div class="ui-page-head">
+        <div>
+          <h1>Leak Hunt</h1>
+          <p class="muted">Three real cases from the Casebook, six columns each, and one leak: a column that gives the answer away. Spot it before your model does. A new puzzle every day.</p>
+        </div>
+        <anvil-component type="Label" name="streak_label" prop:role='["lh-streak"]'></anvil-component>
+      </div>
+      <div class="lh-nav">
+        <anvil-component type="Button" name="prev_button" prop:text="Previous day" prop:role='["btn", "btn-sm", "btn-ghost", "ic-back"]'></anvil-component>
+        <anvil-component type="Label" name="date_label" prop:role='["lh-date"]'></anvil-component>
+        <anvil-component type="Button" name="next_button" prop:text="Next day" prop:role='["btn", "btn-sm", "btn-ghost", "ic-chevron"]'></anvil-component>
+        <a class="lh-today" anvil:name="today_link" href="#leakhunt">Back to today’s puzzle</a>
+        <anvil-component type="Label" name="round_label" prop:role='["lh-round-no"]'></anvil-component>
+      </div>
+      <div anvil:name="play_part">
+        <div class="ui-card lh-round">
+          <anvil-component type="Label" name="case_name" prop:role='["lh-case-h"]'></anvil-component>
+          <anvil-component type="Label" name="case_meta" prop:role='["lh-case-meta"]'></anvil-component>
+          <anvil-component type="Label" name="case_q" prop:role='["lh-case-q"]'></anvil-component>
+          <div class="lh-target"><span class="ri-role target">y</span><anvil-component type="Label" name="target_text" prop:role='["lh-target-text"]'></anvil-component></div>
+          <anvil-component type="Label" name="prompt" prop:role='["lh-prompt"]'></anvil-component>
+          <anvil-component type="RepeatingPanel" name="chip_panel" prop:item_template="RoboIntern.Items.HuntChip" prop:role='["lh-chips"]'></anvil-component>
+          <div class="ri-thm lh-reveal" anvil:name="reveal_box" tabindex="-1">
+            <anvil-component type="Label" name="reveal_title" prop:role='["lh-reveal-h"]'></anvil-component>
+            <anvil-component type="Label" name="reveal_kind" prop:role='["lh-kind"]'></anvil-component>
+            <anvil-component type="Label" name="reveal_why" prop:role='["lh-reveal-p"]'></anvil-component>
+            <div class="lh-links">
+              <a anvil:name="atlas_link" href="#atlas"><anvil-component type="Label" name="atlas_text" prop:role='["inline"]'></anvil-component> <span aria-hidden="true">→</span></a>
+              <a anvil:name="case_link" href="#cases">Open this case <span aria-hidden="true">→</span></a>
+            </div>
+            <anvil-component type="Button" name="next_round_button" prop:role='["btn", "btn-primary"]'></anvil-component>
+          </div>
+        </div>
+      </div>
+      <div anvil:name="done_part">
+        <div class="ui-card lh-done">
+          <div class="lh-done-top">
+            <anvil-component type="Label" name="score_label" prop:role='["lh-score"]'></anvil-component>
+            <div>
+              <anvil-component type="Label" name="score_text" prop:role='["lh-score-h"]'></anvil-component>
+              <anvil-component type="Label" name="done_streak" prop:role='["lh-done-streak"]'></anvil-component>
+            </div>
+          </div>
+          <div class="lh-share">
+            <code class="lh-share-line" anvil:dom-node="share_preview"></code>
+            <anvil-component type="Button" name="share_button" prop:text="Share" prop:role='["btn", "btn-primary", "ic-share"]'></anvil-component>
+          </div>
+          <h3 class="lh-recap-h">The leaks</h3>
+          <ol class="lh-recap" anvil:dom-node="recap"></ol>
+          <div class="lh-done-acts">
+            <anvil-component type="Button" name="replay_button" prop:text="Play again (not scored)" prop:role='["btn", "btn-sm", "ic-refresh"]'></anvil-component>
+            <a class="ui-btn sm" anvil:name="yesterday_link" href="#leakhunt"><i class="ic ic-calendar"></i>The day before</a>
+            <a class="ui-btn sm" href="#lab"><i class="ic ic-flask"></i>Check your own columns in the Lab</a>
+          </div>
+        </div>
+      </div>
+      <div class="ui-empty" anvil:name="empty_part">
+        <i class="ic ic-cases"></i>
+        <h3>No puzzle today</h3>
+        <p>The Casebook didn’t load. Reload the page to try again.</p>
+      </div>
+    </div>
+  </anvil-block>
+</anvil-form>

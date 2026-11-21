@@ -2158,6 +2158,97 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     return null;
   };
 
+  /* ------------------------------------------------------------------ the leak check (the Lab's §2 box)
+     Columns that may give the answer away, and splits that would test the model on rows it has already seen.
+     Names only (nothing runs, no values): the person fixes or dismisses each line.
+     RI.leaks(spec) -> [{col, level: 'high'|'check'|'info', kind, why (HTML), fix, fixes: [...], ok}]
+       kind  'target' (recorded after the outcome / derived from y), 'group' (an entity id with several rows),
+             'time' (dates but a random split), 'known' (ticked known-ahead but isn't), 'note' (info lines)
+       fixes 'ignore' | 'group' | 'time' | 'unknown' (untick known-ahead); ok = the dismiss button's label */
+  var LEAK = {
+    outcome: /^(after|post|final|actual|outcome|outcomes|result|results|resolved|resolution|closed|closing|cancel(l?ed|l?ations?|s)?|refund(ed|s)?|chargebacks?|discharged?|settled|settlement|reason|reasons|returned)$/,
+    before: /^(prior|past|previous|prev|last|lag|lagged|hist|history|historic|historical|before|pre|upstream|inbound|planned|plan|quoted|quote|expected|forecast|fcst|budget|baseline|competitor|market|peer|neighbour|neighbor|benchmark)$/,
+    transform: /^(log|ln|log1p|sqrt|sq|scaled|norm|normalised|normalized|std|z|zscore|rank|binned|bin|bucket|capped|clipped|rounded)$/,
+    generic: /^(is|has|was|will|did|does|next|first|last|total|num|no|avg|mean|count|days?|hours?|new|net|number|the|target|label)$/,
+    entity: /(^|_)(customer|patient|user|member|client|student|account|machine|device|unit|vehicle|household|subject|subscriber|policy|employee|driver|guest|field|farm|cow)_?(id|no|number|key|code)$/
+  };
+  function leakTokens(name) { return String(name).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); }
+  function leakRoot(w) { w = w.replace(/(ings?|ed|es|s)$/, ''); return w.replace(/([b-df-hj-np-tv-z])\1$/, '$1'); }
+  function leakHead(tokens, skip) {
+    for (var i = 0; i < tokens.length; i++) if (!/^\d/.test(tokens[i]) && tokens[i].length >= 3 && !skip.test(tokens[i])) return leakRoot(tokens[i]);
+    return '';
+  }
+  /* Does the feature start like the target (churned -> churn_reason, price -> price_per_sqm, log_price)? */
+  function leakStem(feature, target) {
+    var t = leakHead(leakTokens(target), LEAK.generic), ft = leakTokens(feature);
+    if (!t || !ft.length || LEAK.before.test(ft[0])) return false;
+    var i = 0;
+    while (i < ft.length - 1 && LEAK.transform.test(ft[i])) i++;
+    var f = leakRoot(ft[i]), short = Math.min(f.length, t.length);
+    if (short < 3) return false;
+    return f === t || (short >= 4 && (f.indexOf(t) === 0 || t.indexOf(f) === 0));
+  }
+  RI.leaks = function (spec) {
+    var d = RI.derive(spec), out = [], task = spec.task, cols = spec.columns || [];
+    if (task === 'anomaly' || task === 'cluster' || !d.target) return out;
+    var fc = task === 'forecast';
+    var see = function (c) { return '<code>' + esc(c) + '</code>'; };
+    cols.forEach(function (c) {
+      var tok = leakTokens(c.name), lower = c.name.toLowerCase();
+      if (c.role === 'feature' && c.type !== 'id') {
+        var before = tok.some(function (w) { return LEAK.before.test(w); });
+        var word = tok.filter(function (w) { return LEAK.outcome.test(w); })[0];
+        var stem = leakStem(c.name, d.target);
+        if (fc) {
+          if (!c.known) return;  // past-only drivers enter as lags >= h: the info line below says so
+          var actual = tok[0] === 'actual' || tok[0] === 'realised' || tok[0] === 'realized';
+          if (stem || actual || (word && !before)) {
+            out.push({ col: c.name, level: stem || actual ? 'high' : 'check', kind: 'known', fix: 'unknown', fixes: ['unknown', 'ignore'], ok: 'It\'s known before',
+              why: stem ? 'Ticked known ahead, but it comes from ' + see(d.target) + ' itself: the forecast would read the answer for the very day it predicts.'
+                : actual ? 'Ticked known ahead, but an actual value only exists afterwards. Use the forecast you will have instead (a <code>_fcst</code> column), or untick it so it enters as a lag.'
+                : '"' + esc(word) + '" sounds like something recorded afterwards. If you can\'t know it for the forecast days, untick it: it then enters as a lag of at least h.' });
+          }
+          return;
+        }
+        if (stem && word) {
+          out.push({ col: c.name, level: 'high', kind: 'target', fix: 'ignore', fixes: ['ignore'], ok: 'It\'s known before',
+            why: 'Shares its stem with ' + see(d.target) + ' and says "' + esc(word) + '": it is filled in after the outcome, so the model reads the answer. A near-perfect score usually means a column like this.' });
+        } else if (stem) {
+          out.push({ col: c.name, level: 'check', kind: 'target', fix: 'ignore', fixes: ['ignore'], ok: 'It\'s known before',
+            why: 'Starts like ' + see(d.target) + '. If it is computed from the target (a log, a ratio, a band, a total that includes it), it gives the answer away.' });
+        } else if (word && !before) {
+          out.push({ col: c.name, level: 'check', kind: 'target', fix: 'ignore', fixes: ['ignore'], ok: 'It\'s known before',
+            why: '"' + esc(word) + '" sounds like something recorded at or after the outcome. Keep it only if you have it at the moment you predict.' });
+        }
+        if (c.type === 'datetime' && !d.time) {
+          out.push({ col: c.name, level: 'check', kind: 'time', fix: 'time', fixes: ['time'], ok: 'Not time-ordered',
+            why: 'Your rows span dates, but the split is random: the model trains on later rows and is tested on earlier ones. Make it <b>t</b> to test on the most recent rows, as after you deploy.' });
+        }
+      } else if ((c.role === 'ignore' || c.type === 'id') && c.role !== 'group' && c.role !== 'target' && c.role !== 'time' &&
+                 !d.time && !d.groups.length && LEAK.entity.test(lower)) {
+        var who = (/(^|_)([a-z]+)_?(id|no|number|key|code)$/.exec(lower) || [])[2] || 'entity';
+        out.push({ col: c.name, level: 'check', kind: 'group', fix: 'group', fixes: ['group'], ok: 'One row each',
+          why: 'Several rows per ' + esc(who) + '? A random split puts some of them in training and some in testing: the model recognises the ' + esc(who) +
+            ' and the score looks better than it will be. Make it <b>g</b> and each ' + esc(who) + '\'s rows stay on one side.' });
+      }
+    });
+    var order = { high: 0, check: 1, info: 2 };
+    out.sort(function (a, b) { return order[a.level] - order[b.level]; });
+    if (fc && d.past.length) {
+      out.push({ col: null, level: 'info', kind: 'note', fix: null, fixes: [], ok: '',
+        why: 'Past-only drivers (no tick: ' + d.past.slice(0, 4).map(see).join(', ') + (d.past.length > 4 ? ', …' : '') + ') enter as lags of at least h = ' + spec.horizon + ', so the model only sees what it would know.' });
+    }
+    if (!fc && d.groups.length) {
+      out.push({ col: null, level: 'info', kind: 'note', fix: null, fixes: [], ok: '',
+        why: d.time ? 'Rows are split by ' + see(d.time) + ' (time comes first); ' + d.groups.map(see).join(', ') + ' is never a feature.'
+          : 'Rows of one ' + d.groups.map(see).join(' + ') + ' stay on one side of the holdout and of every CV fold.' });
+    } else if (!fc && d.time) {
+      out.push({ col: null, level: 'info', kind: 'note', fix: null, fixes: [], ok: '',
+        why: 'Rows are split by ' + see(d.time) + ': the model is tested on the most recent ones.' });
+    }
+    return out;
+  };
+
   /* ------------------------------------------------------------------ the recommender
      S(m) = 20 (w_a p_m + w_i q_m + w_s r_m) / (w_a + w_i + w_s) + sum of adjustments, clipped to [0, 100] */
   RI.recommend = function (spec) {
@@ -2207,6 +2298,7 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
         if (spec.rows === 'xs' && m.family === 'boosting' && m.slug !== 'catboost') add(-4, 'Can overfit very small data');
         if (d.num.length + d.bool.length > 30 && m.slug === 'knn') add(-6, 'Curse of dimensionality');
         if (spec.task === 'multiclass' && m.slug === 'gp') add(-6, 'Slow and clumsy for many classes');
+        if (d.groups.length && !d.time && m.tmpl === 'tab') add(0.001, 'Rows of one group stay together in testing');
       }
       var parts = { acc: 20 * wa * m.power, interp: 20 * wi * m.interp, speed: 20 * ws * m.speed };
       var base = parts.acc + parts.interp + parts.speed;
@@ -2362,6 +2454,9 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     var text = (m.slug === 'catboost' && !clf) ? [] : d.txt;
     var ivals = spec.intervals && !clf;
     var tuned = spec.tune && RI.tunable(spec, m), cvName = d.time ? 'TimeSeriesSplit' : clf ? 'StratifiedKFold' : 'KFold';
+    // g outside forecasting: a group's rows (a customer, a patient, a machine) stay on one side of every split
+    var grp = d.groups.length > 0, grpCv = grp && tuned && !d.time, gcvName = clf ? 'StratifiedGroupKFold' : 'GroupKFold';
+    var GROUP_LINE = '    print(f"{group_key(df).nunique():,} groups in {GROUPS}: each one stays on one side of the split")';
     var scoring = !clf ? 'neg_mean_absolute_error' : bin ? 'roc_auc' : 'balanced_accuracy';
     var L = [];
     L.push(header(spec, m, d, title, ['', 'Run:', '    pip install -r requirements.txt', '    python train.py             # ' + (tuned ? 'tunes by cross-validation, ' : '') + 'evaluates on a holdout, then trains on everything -> model.joblib',
@@ -2376,7 +2471,8 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     L.push('from sklearn.inspection import permutation_importance');
     L.push(clf ? 'from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, log_loss, roc_auc_score'
       : 'from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score');
-    L.push('from sklearn.model_selection import ' + (tuned ? [cvName, 'cross_val_score', 'train_test_split'].sort().join(', ') : 'train_test_split'));
+    var msel = ['train_test_split'].concat(tuned ? [cvName, 'cross_val_score'] : [], grp ? ['GroupShuffleSplit'] : [], grpCv ? [gcvName] : []);
+    L.push('from sklearn.model_selection import ' + msel.sort().join(', '));
     if (!e.cat) L.push('from sklearn.pipeline import Pipeline');
     var pre = [];
     if (clf) pre.push('LabelEncoder');
@@ -2387,6 +2483,7 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     L.push('DATA = ' + py(spec.file));
     L.push('TARGET = ' + py(d.target));
     L.push('TIME = ' + (d.time ? py(d.time) + '  # rows are split by time, so the model is tested on the future it never saw' : 'None'));
+    if (grp) L.push('GROUPS = ' + pyList(d.groups, 9) + '  # rows of one group stay on one side of the split');
     L.push('NUMERIC = ' + pyList(d.num, 10));
     L.push('BOOLEAN = ' + pyList(d.bool, 10));
     L.push('CATEGORICAL = ' + pyList(d.cat, 14));
@@ -2450,18 +2547,27 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     }
     if (tuned) {
       L = L.concat(spaceFn(SPACE[m.slug].concat(m.slug === 'svm' && !clf ? ['"epsilon": trial.suggest_float("epsilon", 0.01, 1.0, log=True)'] : [])), WITH_PARAMS);
-      L.push('def tune(X, y):', '    """Cross-validated Optuna search on the training rows only, so the holdout stays unseen."""',
-        '    cv = ' + (d.time ? 'TimeSeriesSplit(FOLDS)  # rows are in time order: always validate on the future' : cvName + '(FOLDS, shuffle=True, random_state=SEED)'), '',
-        '    def objective(trial):', '        model = with_params(make_model(), search_space(trial))',
-        '        return np.nanmean(cross_val_score(model, X, y, cv=cv, scoring=SCORING))', '');
+      L.push('def tune(X, y' + (grpCv ? ', groups' : '') + '):', '    """Cross-validated Optuna search on the training rows only, so the holdout stays unseen."""');
+      if (grpCv) L.push('    if groups.nunique() >= 2:  # a group\'s rows are never on both sides of a fold',
+        '        cv = ' + (clf ? gcvName + '(min(FOLDS, groups.nunique()), shuffle=True, random_state=SEED)' : gcvName + '(min(FOLDS, groups.nunique()))'),
+        '    else:', '        print("  warning: fewer than 2 groups, so the folds split rows at random")',
+        '        cv, groups = ' + cvName + '(FOLDS, shuffle=True, random_state=SEED), None', '');
+      else L.push('    cv = ' + (d.time ? 'TimeSeriesSplit(FOLDS)  # rows are in time order: always validate on the future' : cvName + '(FOLDS, shuffle=True, random_state=SEED)'), '');
+      L.push('    def objective(trial):', '        model = with_params(make_model(), search_space(trial))',
+        '        return np.nanmean(cross_val_score(model, X, y, cv=cv, scoring=SCORING' + (grpCv ? ', groups=groups' : '') + '))', '');
       L = L.concat(studyLines('maximize', 'CV {SCORING}'), ['', '']);
     }
     if (e.quant) L.push('def fit(X, y' + (tuned ? ', params=None' : '') + '):', '    """Three LightGBM models on the pinball loss: P10, P50, P90."""', '    return {name: ' + (tuned ? 'with_params(make_model(alpha), params or {})' : 'make_model(alpha)') + '.fit(X, y) for name, alpha in (("lo", 0.1), ("mid", 0.5), ("hi", 0.9))}', '', '');
     else if (tuned) L.push('def fit(X, y, params=None):', '    return with_params(make_model(), params or {}).fit(X, y)', '', '');
     else L.push('def fit(X, y):', '    return make_model().fit(X, y)', '', '');
     // split
+    if (grp) L.push('def group_key(df):', '    """One key per row: its group (several g columns are joined into one key)."""',
+      '    if len(GROUPS) == 1:', '        return df[GROUPS[0]].astype(str)', '    return df[GROUPS].astype(str).agg("|".join, axis=1)', '', '');
     L.push('def split(df):');
     L.push('    if TIME:', '        df = df.sort_values(TIME)', '        cut = int(len(df) * (1 - TEST_SIZE))', '        return df.iloc[:cut], df.iloc[cut:]');
+    if (grp) L.push('    groups = group_key(df)', '    if groups.nunique() >= 2:  # whole groups go to the holdout, so it measures new customers, patients, machines',
+      '        train_rows, test_rows = next(GroupShuffleSplit(1, test_size=TEST_SIZE, random_state=SEED).split(df, groups=groups))',
+      '        return df.iloc[train_rows], df.iloc[test_rows]', '    print("warning: fewer than 2 groups in GROUPS, so rows are split at random")');
     if (clf) L.push('    strat = df[TARGET] if df[TARGET].value_counts().min() >= 2 else None', '    return train_test_split(df, test_size=TEST_SIZE, random_state=SEED, stratify=strat)');
     else L.push('    return train_test_split(df, test_size=TEST_SIZE, random_state=SEED)');
     L.push('', '');
@@ -2504,9 +2610,10 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
       L.push('    encoder = LabelEncoder().fit(df[TARGET])');
       if (bin) L.push('    if len(encoder.classes_) != 2:', '        raise SystemExit(f"Binary task, but {TARGET} has {len(encoder.classes_)} classes: {list(encoder.classes_)[:10]}")');
       L.push('    print(f"{len(df):,} rows, classes: {list(encoder.classes_)[:12]}" + ("  (positive = \'" + encoder.classes_[1] + "\')" if len(encoder.classes_) == 2 else ""))');
+      if (grp && !d.time) L.push(GROUP_LINE);
       L.push('    train, test = split(df)');
       L.push('    y_train, y_test = encoder.transform(train[TARGET]), encoder.transform(test[TARGET])');
-      if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS}-fold CV, up to {TUNE_TRIALS} trials):")', '        params = tune(train[FEATURES], y_train)');
+      if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS}-fold CV, up to {TUNE_TRIALS} trials):")', '        params = tune(train[FEATURES], y_train' + (grpCv ? ', group_key(train)' : '') + ')');
       L.push('    model = fit(train[FEATURES], y_train' + (tuned ? ', params' : '') + ')');
       L.push('    print(f"\\nHoldout ({len(test):,} rows):")');
       L.push('    evaluate(model, test[FEATURES], y_test, y_train, encoder.classes_)');
@@ -2516,8 +2623,9 @@ study.optimize(lambda trial: cross_val_score(make_model(trial), X, y, cv=5).mean
     } else {
       L.push('    df[TARGET] = pd.to_numeric(df[TARGET], errors="coerce")', '    df = df.dropna(subset=[TARGET])');
       L.push('    print(f"{len(df):,} rows, {TARGET}: mean {df[TARGET].mean():,.3f}, sd {df[TARGET].std():,.3f}")');
+      if (grp && !d.time) L.push(GROUP_LINE);
       L.push('    train, test = split(df)');
-      if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS}-fold CV, up to {TUNE_TRIALS} trials):")', '        params = tune(train[FEATURES], train[TARGET])');
+      if (tuned) L.push('    params = {}', '    if TUNE:', '        print(f"\\nTuning ({FOLDS}-fold CV, up to {TUNE_TRIALS} trials):")', '        params = tune(train[FEATURES], train[TARGET]' + (grpCv ? ', group_key(train)' : '') + ')');
       L.push('    model = fit(train[FEATURES], train[TARGET]' + (tuned ? ', params' : '') + ')');
       L.push('    print(f"\\nHoldout ({len(test):,} rows):")');
       L.push('    resid = evaluate(model, test[FEATURES], test[TARGET].to_numpy(), train[TARGET])');

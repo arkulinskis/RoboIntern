@@ -164,6 +164,19 @@
       return JSON.stringify({ slug: m.slug, name: m.name, eq: m.eq, intuition: RI.mtext(m.intuition) });
     },
     eq: function (slug) { return (RI.MODEL[slug] || {}).eq || ''; },
+    /* Leak Hunt (Pages/LeakHunt + client_code/leakhunt.py): the supervised Casebook cases with their columns
+       (target and ignored ids left out of cols; all = every column name, so a planted leak never collides). */
+    huntCases: function () {
+      return JSON.stringify(RI.CASES.filter(function (c) { return ['forecast', 'regression', 'binary', 'multiclass'].indexOf(c.task) >= 0; }).map(function (c) {
+        var cols = c.cols.concat(c.sig.map(function (s) { return s[0]; })).map(RI.caseColumn);
+        var tgt = cols.filter(function (x) { return x.role === 'target'; })[0];
+        return { id: c.id, ind: c.ind, ind_name: RI.INDUSTRY[c.ind].name, no: c.no, name: c.name, q: c.q, shape: c.shape,
+          shape_name: RI.SHAPES[c.shape].name, task: c.task, target: tgt ? tgt.name : '',
+          cols: cols.filter(function (x) { return x.role !== 'target' && x.role !== 'ignore'; })
+            .map(function (x) { return { name: x.name, role: x.role, known: !!x.known && c.task === 'forecast' }; }),
+          all: cols.map(function (x) { return x.name; }) };
+      }));
+    },
     /* A listing's data description: the notation line and the column table (the listing page's side card). */
     specView: function (specJson, task) {
       var spec = RI.cleanSpec(JSON.parse(specJson)), xi = 0;

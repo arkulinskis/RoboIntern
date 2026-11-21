@@ -116,6 +116,22 @@
     const snipHref = $('.cm-card').getAttribute('href');
     await open(snipHref, /How to run it/);
     await open('#snippet/no-such-listing', /deleted, or made private/);
+    // 2026-11-20: Read my results, Leak Hunt, the Lab's leak check
+    await open('#results', /Read my results/);
+    button(/Try an example/).click();
+    await until(() => /usable|majority|Suspiciously|na.ve/.test(($('.anvil-role-rs-verdict-h') || {}).innerText || ''), 'a results verdict', 15000);
+    check('#results (example read)', /What it checks/);
+    await open('#leakhunt', /Leak Hunt/);
+    const chip = $('.anvil-role-hunt-chip button');
+    if (chip) {
+      chip.click();
+      await until(() => /leak/i.test(($('.anvil-role-lh-reveal-h') || {}).innerText || ''), 'the Leak Hunt reveal', 15000);
+      check('#leakhunt (a chip tapped)', /Open this case/);
+    } else bad.push('#leakhunt: no chips');
+    await open('#lab', /Lab/);
+    type($('[data-paste]'), 'customer_id,plan,spend,churn_reason,churned');
+    await until(() => $('[data-leak-box]') && /churn_reason/.test($('[data-leak-box]').innerText), 'the leak check', 10000);
+    check('#lab (leak check)', /Leak check/);
     await open('#auth', /Sign in/);
     await open('#auth/signup', /Create account/);
 

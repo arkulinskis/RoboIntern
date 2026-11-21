@@ -36,6 +36,11 @@
             <anvil-component type="RoboIntern.Components.Tex" name="lemma_eq" prop:display="true"></anvil-component>
             <p class="muted" anvil:dom-node="lemma_text"></p>
           </div>
+          <a class="ui-card nb-hunt" href="#leakhunt">
+            <h3 class="nb-side-h">Today’s Leak Hunt</h3>
+            <div class="small muted">One leaky column hides in each of three Casebook cases. Can you spot them?</div>
+            <anvil-component type="Label" name="hunt_line" prop:role='["nb-hunt-line"]'></anvil-component>
+          </a>
           <div class="ui-card">
             <h3 class="nb-side-h">Data descriptions</h3>
             <anvil-component type="RepeatingPanel" name="ds_panel" prop:item_template="RoboIntern.Items.DatasetRow" prop:role='["nb-ds"]'></anvil-component>

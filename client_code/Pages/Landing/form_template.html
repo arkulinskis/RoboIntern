@@ -88,6 +88,24 @@
             <div class="lp-feature"><i class="ic ic-grid"></i><h3>Validation &amp; metrics</h3><p>Expanding windows, purged splits, MASE, pinball loss, coverage, with fold diagrams.</p></div>
             <div class="lp-feature"><i class="ic ic-notebook"></i><h3>Your notebook</h3><p>Save listings and data descriptions, edit the code, star the good ones, and reopen any of them in the Lab.</p></div>
             <div class="lp-feature"><i class="ic ic-users"></i><h3>The Commons</h3><p>Share a listing and fork other people’s. Forks count as citations, as they should.</p></div>
+            <div class="lp-feature"><i class="ic ic-shield"></i><h3>Leak check</h3><p>Columns that only exist after the outcome, the same customer in training and testing, random splits on dated rows: flagged as you describe your data, with one-click fixes.</p></div>
+            <div class="lp-feature"><i class="ic ic-target"></i><h3>Read my results</h3><p>Paste what train.py printed and get a plain verdict: usable, too weak, or too good to be true. Read in your browser.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-section">
+        <div class="ui-wrap">
+          <div class="ui-card lp-hunt">
+            <div class="lp-hunt-copy">
+              <h2>Today’s Leak Hunt</h2>
+              <p>Three real cases, six columns each, one leak: a column that gives the answer away. Spot it, learn why it leaks, keep your streak. Two minutes, no sign-up.</p>
+              <a class="ui-btn primary" href="#leakhunt">Play today’s puzzle <i class="ic ic-arrow"></i></a>
+            </div>
+            <div class="lp-hunt-art" aria-hidden="true">
+              <span class="hunt-demo">plan</span><span class="hunt-demo">monthly_spend</span><span class="hunt-demo">tickets_90d</span>
+              <span class="hunt-demo leak">churn_reason</span><span class="hunt-demo">region</span><span class="hunt-demo">tenure_months</span>
+            </div>
           </div>
         </div>
       </section>
@@ -117,7 +135,7 @@
             <details><summary>Does RoboIntern run my data or train anything?</summary><p>No. It’s a lookup dictionary with a code writer. Parsing happens in your browser; you run the Python on your own machine, where your data already is.</p></details>
             <details><summary>What do you store?</summary><p>Only what you save: listing titles, notes, the code, and the column names, types and roles of your data description. Never the values in your table.</p></details>
             <details><summary>Which libraries does the code use?</summary><p>pandas and scikit-learn throughout, plus XGBoost, LightGBM, CatBoost, statsmodels, Prophet or PyTorch when the model needs them. requirements.txt lists exactly what to install.</p></details>
-            <details><summary>Is the generated code any good?</summary><p>It is careful where it counts: time-ordered splits, a seasonal-naïve benchmark, MASE, lags that never peek at the future, conformal intervals and permutation importance. Every model’s listing is run end to end on test data before release. It is still a starting point: read it and tune it.</p></details>
+            <details><summary>Is the generated code any good?</summary><p>It is careful where it counts: time-ordered splits, group-aware splits when one customer has many rows, a seasonal-naïve benchmark, MASE, lags that never peek at the future, conformal intervals and permutation importance. Every model’s listing is run end to end on test data before release. It is still a starting point: read it and tune it.</p></details>
             <details><summary>Is it free?</summary><p>Yes. The Atlas, the Lab and the code are free without an account. A free account adds your notebook and the Commons.</p></details>
           </div>
         </div>

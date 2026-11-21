@@ -1,7 +1,7 @@
 """Page addresses: #name/arg1/arg2 -> a page Form (open_form), with sign-in rules.
 
 Same addresses as the JavaScript version (#lab, #atlas/model/lgbm, #cases/retail/<id>, #snippet/<id> ...), so links
-people shared keep working. Links in templates are plain <a href="#lab">; code calls router.go("snippet", id).
+people shared keep working. Added 2026-11-20: #results (Read my results), #leakhunt[/<date>] (Leak Hunt). Links in templates are plain <a href="#lab">; code calls router.go("snippet", id).
 
     PAGES[name] = (who may open it, browser-tab title)   who: None = anyone, "guest" = signed out only, "user", "admin"
     NAV = the main menu (header + phone tab bar): (page, label, icon, members only).
@@ -22,6 +22,8 @@ PAGES = {
     "notebook": ("user", "Notebook"),
     "commons": (None, "The Commons"),
     "snippet": (None, "Listing"),
+    "results": (None, "Read my results"),
+    "leakhunt": (None, "Leak Hunt"),
     "profile": ("user", "Your profile"),
     "admin": ("admin", "Admin"),
 }
@@ -63,6 +65,12 @@ def _form(name):
     if name == "profile":
         from .Pages.Profile import Profile
         return Profile
+    if name == "results":
+        from .Pages.Results import Results
+        return Results
+    if name == "leakhunt":
+        from .Pages.LeakHunt import LeakHunt
+        return LeakHunt
     from .Pages.Admin import Admin
     return Admin
 

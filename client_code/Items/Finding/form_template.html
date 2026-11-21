@@ -1,0 +1,10 @@
+<div class="rs-finding-wrap">
+  <article class="rs-finding" anvil:name="card">
+    <anvil-component type="Label" name="lv" prop:role='["rs-lv"]'></anvil-component>
+    <div class="rs-f-body">
+      <anvil-component type="Label" name="title" prop:role='["rs-f-title"]' bind:text="self.item['title']"></anvil-component>
+      <anvil-component type="Label" name="text" prop:role='["rs-f-text"]' bind:text="self.item['text']"></anvil-component>
+      <a class="rs-f-link" anvil:name="link" href="#atlas"><anvil-component type="Label" name="link_text" prop:role='["inline"]'></anvil-component> <span aria-hidden="true">→</span></a>
+    </div>
+  </article>
+</div>

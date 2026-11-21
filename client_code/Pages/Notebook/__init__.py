@@ -1,7 +1,9 @@
 from anvil import *
 
 from ._anvil_designer import NotebookTemplate
-from ... import ri, router, state
+from datetime import date
+
+from ... import leakhunt, ri, router, state
 
 FILTERS = ["all", "starred", "public"]
 
@@ -26,10 +28,24 @@ class Notebook(NotebookTemplate):
         self.lemma_eq.tex = lemma["eq"]
         self.dom_nodes["lemma_text"].innerHTML = lemma["intuition"]  # RI.mtext: escaped prose + typeset $...$
         self.sample_panel.items = ri.meta()["samples"]
+        self._hunt_line()
         self.list_panel.add_event_handler("x-star", self._star)
         self.ds_panel.add_event_handler("x-open-ds", self._open_ds)
         self.ds_panel.add_event_handler("x-delete-ds", self._delete_ds)
         self.load()
+
+    def _hunt_line(self):
+        """The Leak Hunt side card: today's score or the streak waiting for it (this browser's record)."""
+        raw = state.store_get("leakhunt", "")
+        rec = leakhunt.parse_record(raw if isinstance(raw, str) else "")
+        today = leakhunt._iso(date.today())
+        now = leakhunt.streak_now(rec, today)
+        if today in rec["days"]:
+            self.hunt_line.text = "Done today: %d/3%s" % (int(rec["days"][today] or 0), (" · streak %d" % now) if now else "")
+        elif now:
+            self.hunt_line.text = "Keep your %s streak going →" % state.plural(now, "day")
+        else:
+            self.hunt_line.text = "Play today's puzzle →"
 
     def load(self):
         d = state.call("get_notebook")

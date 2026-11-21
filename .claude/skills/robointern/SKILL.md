@@ -6,7 +6,7 @@ description: Context, workflow and recipes for RoboIntern (folder RoboIntern-for
 # RoboIntern: working on the app
 
 **What it is:** a lookup dictionary of machine-learning strategies for predicting from historical data, plus a code writer. People describe a dataset as a list of columns (paste a header row, mark target / time / series / key drivers / known-ahead) in **the Lab**; RoboIntern ranks the models with a visible formula and writes train.py, predict.py and requirements.txt they run themselves (nothing runs on the site). **The Atlas** explains 43 models (11 families), 18 feature recipes, 9 validation schemes and 17 metrics with typeset maths.
-Six tasks: forecast, regression, binary, multiclass, **anomaly** (y optional) and **cluster** (y optional). A spec flag **tune** adds an Optuna search; every listing exports as a **Jupyter notebook** (RI.notebook). **The Casebook** links 105 business situations in 10 industries (each one of 11 "shapes") to models, outside signals, decision rules and live code. Members keep listings and data descriptions in a **Notebook** and share them in **the Commons** (forks = citations).
+Six tasks: forecast, regression, binary, multiclass, **anomaly** (y optional) and **cluster** (y optional). A spec flag **tune** adds an Optuna search; every listing exports as a **Jupyter notebook** (RI.notebook). **The Casebook** links 105 business situations in 10 industries (each one of 11 "shapes") to models, outside signals, decision rules and live code. Members keep listings and data descriptions in a **Notebook** and share them in **the Commons** (forks = citations). Since 2026-11-20: the Lab's **Leak check** (`RI.leaks`, §2 box with one-click fixes; g outside forecasting = group-aware holdout and CV in genTab), **Read my results** (`#results`, `client_code/readout.py`) and the daily **Leak Hunt** (`#leakhunt[/<date>]`, `client_code/leakhunt.py`).
 
 **Where it lives:**
 - Folder `C:\Users\arkvi\Documents\CLAUDE\RoboIntern-forms\` = the git clone of **github.com/arkulinskis/RoboIntern**. "git" layout: the folder *is* the Anvil app. Native Forms on master since 2026-11-08 (forms branch merged); Anvil pulls `master` and pushing is the deploy. Live: https://robointern.com.
@@ -88,6 +88,11 @@ tools/                    check.py, assets.py, build_icons.py, make_icons.py, ui
 - **Icon:** theme/assets/icon.svg, `python -I tools/make_icons.py`, `python tools/assets.py`.
 
 ## Gotchas
+
+- **Leak check rules** live in `RI.leaks` (ri-engine.js, after RI.problem): name heuristics only. Guard: no Casebook case or Lab sample may get a `high` line (checked 2026-11-20: none; 15 cases get `check` lines). Dismissals are `st.leakOk` in the Lab draft (browser only, never in the spec).
+- **Group-aware splits** (genTab): only specs with a g column change (GROUPS, group_key, GroupShuffleSplit, GroupKFold/StratifiedGroupKFold when tuned without t). Specs without g generate byte-identical code (390 listings compared 2026-11-20). TIME still wins over GROUPS. The new code was syntax-checked, not yet run in an ML venv: run gen.js + run.py with a binary/regression g spec next time.
+- **Read my results** parses the exact print formats of the templates: if you change a `print(` line in a generator, update `readout.parse` too. Store key `results-ctx` = {task, model, target, snippet_id, title, can_edit} (Lab §5 link, listing page link). "Add to notes" re-reads the listing (get_snippet) and saves through save_snippet (ownership checked there).
+- **Leak Hunt** is deterministic per date (Lehmer LCG seeded from the day number): editing `BANK` or the Casebook changes past puzzles. Record = store key `leakhunt` (JSON text: days, streak, best, last); only today's puzzle moves the streak.
 
 - Generated scripts must print ASCII only (Windows consoles crash on ★ ² ±). Generated feature names are prefixed (`cal_month`, `lag_7`) so they never overwrite a user column.
 - LightGBM 4.7.0 crashes on Windows with pandas input (`lightgbm>=4.0,!=4.7.0`). statsmodels ETS `get_prediction` needs a pandas Series. Torch predict.py uses `reindex(columns=...)` for missing past-only columns.

@@ -6,7 +6,8 @@
   var esc = UI.esc;
   var DEFAULT_W = { acc: 0.5, interp: 0.25, speed: 0.25 };
 
-  function blankState() { return { text: '', spec: null, pick: null, file: 'train', showAll: false, dataset: null }; }
+  function blankState() { return { text: '', spec: null, pick: null, file: 'train', showAll: false, dataset: null, leakOk: {} }; }
+  var LEAK_FIX = { ignore: 'Ignore it', group: 'Make it g', time: 'Make it t', unknown: 'Untick known-ahead' };
   function sub(n) { return '<sub>' + n + '</sub>'; }
 
   /* Merge a fresh parse with what the person already set for columns of the same name. */
@@ -135,7 +136,8 @@
       S2.innerHTML = '<h2><span class="ri-sec">§2</span>Columns &amp; roles</h2><p class="lb-lead">Set each column\'s role and type. Star ★ the drivers you believe matter most: the code builds extra features around them.' +
         (fc ? ' Tick <b>known ahead</b> for drivers you will know for the forecast period (promos, prices, holidays, weather forecasts).' : '') +
         (sp.task === 'anomaly' ? ' No target needed. A true/false <b>y</b> (known anomalies) is only used to measure the detector; a numeric <b>y</b> with a time column <b>t</b> is a metric to watch over time.' : '') +
-        (sp.task === 'cluster' ? ' No target needed: the features <b>x</b> form the groups. A <b>y</b>, if you keep one, is only described per cluster.' : '') + '</p>' +
+        (sp.task === 'cluster' ? ' No target needed: the features <b>x</b> form the groups. A <b>y</b>, if you keep one, is only described per cluster.' : '') +
+        (sp.task === 'regression' || sp.task === 'binary' || sp.task === 'multiclass' ? ' Several rows per customer, patient or machine? Mark that id <b>g</b>: each group\'s rows stay together on one side of the split.' : '') + '</p>' +
         '<div class="lb-legend">' + RI.ROLES.map(function (r) { return '<span><span class="ri-role ' + r[0] + '">' + r[1] + '</span>' + r[2] + '</span>'; }).join('') + '<span>★ key driver</span></div>' +
         '<div class="lb-cols">' + sp.columns.map(function (c, i) {
           var idx = c.role === 'target' ? 'y' : c.role === 'time' ? 't' : c.role === 'group' ? 'g' : c.role === 'ignore' ? '∅' : 'x' + sub(++xi);
@@ -148,7 +150,7 @@
             }).join('') + '</div>' +
             '<button type="button" class="lb-star' + (c.key ? ' on' : '') + '" data-key title="Key driver" aria-pressed="' + c.key + '">★</button>' +
             '<label class="lb-known' + (fc && c.role === 'feature' && numish ? '' : ' off') + '"><input type="checkbox" data-known' + (c.known ? ' checked' : '') + '> known ahead</label></div>';
-        }).join('') + '</div><div class="lb-problem" data-problem></div>';
+        }).join('') + '</div><div class="lb-problem" data-problem></div><div class="lb-leaks" data-leaks></div>';
       drawProblem();
     }
     function drawProblem() {
@@ -156,6 +158,50 @@
       if (!box) return;
       var p = spec() && RI.problem(spec());
       box.innerHTML = p ? '<div class="ui-error">' + esc(p) + '</div>' : '';
+      drawLeaks();
+    }
+    /* The leak check (RI.leaks): suspect columns with one-click fixes, dismissals kept in st.leakOk (this browser only). */
+    function drawLeaks() {
+      var box = S2.querySelector('[data-leaks]'), sp = spec();
+      if (!box) return;
+      if (!sp || RI.problem(sp) || sp.task === 'anomaly' || sp.task === 'cluster') { box.innerHTML = ''; return; }
+      var ok = st.leakOk || {}, hidden = 0;
+      var list = RI.leaks(sp).filter(function (f) {
+        if (f.col && ok[f.col + ':' + f.kind]) { hidden++; return false; }
+        return true;
+      });
+      var sus = list.filter(function (f) { return f.level !== 'info'; }), notes = list.filter(function (f) { return f.level === 'info'; });
+      var high = sus.some(function (f) { return f.level === 'high'; }), n = sp.columns.length;
+      box.innerHTML = '<div class="ri-thm lb-leak' + (high ? ' red' : sus.length ? '' : ' green') + '" tabindex="-1" data-leak-box>' +
+        '<div class="lb-leak-head"><b>Leak check.</b> <span>' + (sus.length
+          ? (sus.length === 1 ? 'One column to look at' : sus.length + ' columns to look at') + ' among ' + n + '.'
+          : 'No leak suspects among ' + n + ' columns · scaling and encoding are fitted on training rows only.') + '</span></div>' +
+        (sus.length ? '<ul class="lb-leak-list">' + sus.map(function (f) {
+          var key = f.col + ':' + f.kind;
+          return '<li class="lb-leak-row lv-' + f.level + '"><div class="lb-leak-top"><span class="lb-leak-lv">' + (f.level === 'high' ? 'likely leak' : 'check') + '</span>' +
+            '<code>' + esc(f.col) + '</code></div><p>' + f.why + '</p><div class="lb-leak-acts">' +
+            f.fixes.map(function (x, i) {
+              return '<button type="button" class="ui-btn sm' + (i === 0 ? '' : ' ghost') + '" data-leak-fix="' + x + '" data-leak-col="' + esc(f.col) + '">' + LEAK_FIX[x] + '</button>';
+            }).join('') +
+            '<button type="button" class="ui-btn sm ghost" data-leak-ok="' + esc(key) + '">' + esc(f.ok) + '</button></div></li>';
+        }).join('') + '</ul>' : '') +
+        (notes.length ? '<ul class="lb-leak-notes">' + notes.map(function (f) { return '<li>' + f.why + '</li>'; }).join('') + '</ul>' : '') +
+        '<div class="lb-leak-foot">' + (sus.length ? '<span>Scaling and encoding are always fitted on training rows only.</span>' : '') +
+        (hidden ? '<button type="button" class="lb-leak-undo" data-leak-reset>' + hidden + ' dismissed · show again</button>' : '') +
+        '<a href="#leakhunt">Practise: today\'s Leak Hunt →</a></div></div>';
+    }
+    function leakFix(name, fix) {
+      var sp = spec(), c = sp && sp.columns.filter(function (x) { return x.name === name; })[0];
+      if (!c) return;
+      if (fix === 'ignore') { c.role = 'ignore'; c.key = false; }
+      else if (fix === 'group') { c.role = 'group'; c.key = false; if (c.type === 'id') c.type = 'categorical'; }
+      else if (fix === 'time') { sp.columns.forEach(function (o) { if (o !== c && o.role === 'time') o.role = 'feature'; }); c.role = 'time'; c.key = false; }
+      else if (fix === 'unknown') c.known = false;
+      refresh([1, 2, 3]);
+      UI.toast({ ignore: name + ' is ignored now: the model never sees it', group: name + ' is g now: its rows stay together',
+        time: name + ' is t now: the newest rows become the test set', unknown: name + ' is past-only now: it enters as a lag' }[fix], 'ok');
+      var b = view.querySelector('[data-leak-box]');
+      if (b) b.focus({ preventScroll: true });
     }
 
     function drawS3() {
@@ -214,7 +260,8 @@
         '<div class="ui-row"><a class="ui-btn sm" href="#atlas/model/' + m.slug + '" data-go="atlas/model/' + m.slug + '">' + UI.icon('book') + '<span>About ' + esc(m.short) + '</span></a>' +
         '<button type="button" class="ui-btn sm primary" data-save-snippet>' + UI.icon('save') + '<span>Save to notebook</span></button></div></div>' +
         tuneNote + RI.codeBlock(files, st.file) +
-        '<p class="lb-run">$ pip install -r requirements.txt &nbsp;&amp;&amp;&nbsp; python train.py &nbsp;&amp;&amp;&nbsp; python predict.py' + (sp.task === 'forecast' || m.tmpl === 'anomts' ? '' : ' new.csv') + '</p>';
+        '<p class="lb-run">$ pip install -r requirements.txt &nbsp;&amp;&amp;&nbsp; python train.py &nbsp;&amp;&amp;&nbsp; python predict.py' + (sp.task === 'forecast' || m.tmpl === 'anomts' ? '' : ' new.csv') + '</p>' +
+        '<p class="lb-results"><a href="#results" data-results>Ran it? Paste what train.py printed <span aria-hidden="true">→</span></a> <span class="muted">An honest verdict on your score, read in this browser.</span></p>';
     }
 
     function compute() {
@@ -294,6 +341,18 @@
       if (e.target.closest('[data-show-all]')) { st.showAll = !st.showAll; drawS4(); save(); return; }
       if (e.target.closest('[data-save-snippet]')) { saveSnippet(); return; }
       if (e.target.closest('[data-save-ds]')) { saveDataset(); return; }
+      if ((t = e.target.closest('[data-leak-fix]'))) { leakFix(t.getAttribute('data-leak-col'), t.getAttribute('data-leak-fix')); return; }
+      if ((t = e.target.closest('[data-leak-ok]'))) {
+        st.leakOk = st.leakOk || {}; st.leakOk[t.getAttribute('data-leak-ok')] = true; save(); drawLeaks();
+        var lb = view.querySelector('[data-leak-box]'); if (lb) lb.focus({ preventScroll: true });
+        return;
+      }
+      if (e.target.closest('[data-leak-reset]')) { st.leakOk = {}; save(); drawLeaks(); return; }
+      if (e.target.closest('[data-results]')) {  // the link itself opens #results; this hands it the listing's context
+        var rm = RI.MODEL[st.pick], rd = RI.derive(spec());
+        UI.store.set('results-ctx', { task: spec().task, model: st.pick, target: rd.target || '', snippet_id: null,
+          title: (rm ? rm.name : st.pick) + (rd.target ? ' for ' + rd.target : ''), can_edit: false });
+      }
     });
     RI.wireCode(view, function () { return files || {}; }, function (k) { st.file = k; save(); drawS5(); }, function () {
       var m = RI.MODEL[st.pick], d = RI.derive(spec());

@@ -559,6 +559,28 @@ a.lb-chip.lb-cases { text-decoration: none; display: inline-flex; gap: 5px; alig
 .lb-known input { accent-color: var(--c-brand); }
 .lb-known.off { visibility: hidden; }
 .lb-problem { margin-top: 12px; }
+/* the leak check under §2 (RI.leaks): a hairline theorem box, one line per suspect column */
+.lb-leaks:empty { display: none; }
+.ri-thm.lb-leak { margin: 14px 0 0; padding: 14px 16px; }
+.lb-leak:focus { outline: none; }
+.lb-leak:focus-visible { outline: 3px solid color-mix(in srgb, var(--c-brand) 60%, transparent); outline-offset: 2px; }
+.lb-leak-head { font-size: .95rem; }
+.lb-leak-head > span { color: var(--c-muted); }
+.lb-leak-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.lb-leak-row { padding: 10px 0 12px; border-top: 1px solid var(--c-line); min-width: 0; }
+.lb-leak-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lb-leak-top code { font: .82rem/1.3 var(--font-mono); background: var(--c-code); border: 1px solid var(--c-line); padding: 2px 5px; border-radius: 2px; overflow-wrap: anywhere; }
+.lb-leak-lv { font: 500 .72rem/1.3 var(--font-mono); padding: 2px 6px; border-radius: 2px; background: var(--c-warn-soft); color: var(--c-warn); }
+.lv-high .lb-leak-lv { background: var(--c-bad-soft); color: var(--c-bad); }
+.lb-leak-row p { margin: 6px 0 8px; font-size: .9rem; max-width: var(--measure); }
+.lb-leak-row p code, .lb-leak-notes code { font: .84em var(--font-mono); overflow-wrap: anywhere; }
+.lb-leak-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-leak-notes { margin: 10px 0 0; padding-left: 1.1em; font-size: .86rem; color: var(--c-muted); }
+.lb-leak-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 10px; font-size: .84rem; color: var(--c-muted); }
+.lb-leak-foot a { margin-left: auto; }
+.lb-leak-undo { border: 0; background: none; padding: 4px 0; min-height: 24px; font: inherit; color: var(--c-brand); cursor: pointer; text-decoration: underline; text-underline-offset: .2em; }
+.lb-results { margin: 10px 0 0; font-size: .92rem; }
+.lb-results .muted { font-size: .86rem; }
 .lb-task .ui-seg { flex-wrap: wrap; }
 .lb-row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 16px; }
 .lb-field-label { display: block; font-weight: 600; font-size: .88rem; margin-bottom: 6px; }
@@ -1202,3 +1224,114 @@ anvil-dropzone { display: contents; }
 .ad-cm-row .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: .85rem; color: var(--c-muted); margin-bottom: 8px; }
 .ad-cm-row .msg { overflow-wrap: anywhere; margin: 0 0 6px; }
 .ad-cm-row .ui-row { margin-top: 10px; }
+
+/* ---- Read my results (#results: Pages/Results, Items/Finding) */
+.rs-ctx { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 14px; margin-bottom: 16px; border: 1px solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); font-size: .92rem; }
+.rs-ctx-k { font: 500 .78rem/1 var(--font-mono); color: var(--c-accent); }
+.anvil-role-rs-ctx-text { font-family: var(--font-display); font-weight: 600; color: var(--c-ink); overflow-wrap: anywhere; }
+.rs-ctx-link { margin-left: auto; font-size: .88rem; }
+.rs-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+.rs-main { min-width: 0; }
+.rs-paste-bar { border: 1px solid var(--c-line); border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; }
+.rs-paste-file { font: 500 .8rem/1 var(--font-mono); padding: 8px 10px; color: var(--c-ink); background: var(--c-code); box-shadow: inset 0 -2px 0 var(--c-accent); border-radius: 2px; }
+.ui textarea.anvil-role-rs-paste, .ui .anvil-role-rs-paste { width: 100%; min-height: 230px; font: .8rem/1.55 var(--font-mono); white-space: pre; overflow-x: auto; background: var(--c-code); tab-size: 4; border-radius: 0 0 var(--radius) var(--radius); resize: vertical; }
+.rs-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 12px 0 18px; }
+.rs-private { display: inline-flex; align-items: center; gap: 6px; font-size: .86rem; color: var(--c-muted); }
+.rs-private .ic { width: 15px; height: 15px; color: var(--c-good); }
+.ri-thm.rs-verdict { margin: 0 0 14px; padding: 16px 18px; }
+.rs-verdict:focus { outline: none; }
+.ri-thm.rs-verdict.lv-bad { border-color: color-mix(in srgb, var(--c-bad) 35%, var(--c-line)); background: color-mix(in srgb, var(--c-bad) 6%, var(--c-surface)); }
+.ri-thm.rs-verdict.lv-warn { border-color: color-mix(in srgb, var(--c-warn) 35%, var(--c-line)); background: color-mix(in srgb, var(--c-warn) 6%, var(--c-surface)); }
+.ri-thm.rs-verdict.lv-good { border-color: color-mix(in srgb, var(--c-good) 35%, var(--c-line)); background: color-mix(in srgb, var(--c-good) 6%, var(--c-surface)); }
+.anvil-role-rs-verdict-h { font: 600 clamp(1.25rem, 2.6vw, 1.6rem)/1.2 var(--font-display); color: var(--c-ink); }
+.anvil-role-rs-verdict-p { color: var(--c-muted); margin-top: 4px; }
+.anvil-role-rs-findings > div { display: grid; gap: 10px; }
+.rs-finding { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 4px 12px; padding: 14px 16px; border: 1px solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); }
+.anvil-role-rs-lv { align-self: start; text-align: center; font: 500 .72rem/1.3 var(--font-mono); padding: 3px 6px; border-radius: 2px; background: var(--c-surface-2); color: var(--c-muted); }
+.lv-bad .anvil-role-rs-lv { background: var(--c-bad-soft); color: var(--c-bad); }
+.lv-warn .anvil-role-rs-lv { background: var(--c-warn-soft); color: var(--c-warn); }
+.lv-good .anvil-role-rs-lv { background: var(--c-good-soft); color: var(--c-good); }
+.lv-info .anvil-role-rs-lv { background: var(--c-brand-soft); color: var(--c-brand); }
+.rs-f-body { min-width: 0; }
+.anvil-role-rs-f-title { font: 600 1.05rem/1.3 var(--font-display); color: var(--c-ink); overflow-wrap: anywhere; }
+.anvil-role-rs-f-text { color: var(--c-muted); font-size: .93rem; margin-top: 4px; max-width: var(--measure); }
+.rs-f-link { display: inline-block; margin-top: 8px; font-size: .88rem; padding: 2px 0; }
+.rs-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; }
+.rs-side { display: grid; gap: 14px; min-width: 0; }
+.rs-side .ui-card { padding: 16px 18px; }
+.ui .rs-side-h { font-size: 1.02rem; margin: 0 0 8px; }
+.rs-checks { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+.rs-side-note { margin: 10px 0 0; }
+.rs-side .ui-btn { margin-top: 10px; }
+@media (max-width: 900px) { .rs-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .rs-finding { grid-template-columns: minmax(0, 1fr); } .anvil-role-rs-lv { justify-self: start; } }
+
+/* ---- Leak Hunt (#leakhunt: Pages/LeakHunt, Items/HuntChip; the landing card and the notebook card) */
+.ui-page-head .anvil-role-lh-streak { font: 500 .85rem/1.3 var(--font-mono); color: var(--c-accent); }
+.lh-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 14px; }
+.anvil-role-lh-date { font: 600 1rem/1.3 var(--font-display); color: var(--c-ink); }
+.lh-today { font-size: .9rem; }
+.anvil-role-lh-round-no { margin-left: auto; font: 500 .8rem/1 var(--font-mono); color: var(--c-muted); }
+.ui-card.lh-round { padding: 22px 24px; }
+.anvil-role-lh-case-h { font: 600 clamp(1.35rem, 3vw, 1.75rem)/1.2 var(--font-display); color: var(--c-ink); overflow-wrap: anywhere; }
+.anvil-role-lh-case-meta { font: .8rem/1.4 var(--font-mono); color: var(--c-muted); margin-top: 4px; }
+.anvil-role-lh-case-q { color: var(--c-ink); margin-top: 10px; max-width: var(--measure); }
+.lh-target { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.anvil-role-lh-target-text { font: .88rem/1.3 var(--font-mono); color: var(--c-ink); overflow-wrap: anywhere; }
+.anvil-role-lh-prompt { color: var(--c-muted); font-size: .92rem; margin: 18px 0 10px; }
+.anvil-role-lh-chips > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 8px; }
+.hunt-chip-wrap { display: contents; }
+.anvil-role-hunt-chip, .anvil-role-hunt-chip > button { display: block; width: 100%; }
+.anvil-role-hunt-chip > button { margin: 0; min-height: 52px; padding: 10px 12px; text-align: left; font: .88rem/1.3 var(--font-mono); color: var(--c-ink); background: var(--c-bg);
+  border: 1px solid var(--c-line); border-radius: 2px; cursor: pointer; overflow-wrap: anywhere; box-shadow: none;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.anvil-role-hunt-chip > button:active:not(:disabled) { transform: scale(.98); }
+@media (hover: hover) and (pointer: fine) { .anvil-role-hunt-chip:not(.anvil-role-hunt-done) > button:hover { border-color: var(--c-brand); background: var(--c-brand-soft); } }
+.anvil-role-hunt-t > button::before, .anvil-role-hunt-g > button::before { display: inline-block; min-width: 18px; margin-right: 8px; font: italic 600 .95rem/1 var(--font-display); color: var(--c-muted); }
+.anvil-role-hunt-t > button::before { content: "t"; }
+.anvil-role-hunt-g > button::before { content: "g"; }
+.anvil-role-hunt-known > button::after { content: "\2713  known ahead"; display: block; margin-top: 4px; font: 500 .7rem/1.2 var(--font-body); color: var(--c-brand); }
+.anvil-role-hunt-done > button { cursor: default; }
+.anvil-role-hunt-right > button { border-color: var(--c-good); background: var(--c-good-soft); color: var(--c-ink); box-shadow: inset 3px 0 0 var(--c-good); }
+.anvil-role-hunt-wrong > button { border-color: var(--c-line); color: var(--c-muted); text-decoration: line-through; text-decoration-color: var(--c-bad); }
+.anvil-role-hunt-leak > button { border: 1px dashed var(--c-bad); background: var(--c-bad-soft); color: var(--c-ink); }
+.ri-thm.lh-reveal { margin: 18px 0 0; padding: 16px 18px; }
+.lh-reveal:focus { outline: none; }
+.anvil-role-lh-reveal-h { font: 600 1.15rem/1.3 var(--font-display); color: var(--c-ink); overflow-wrap: anywhere; }
+.anvil-role-lh-kind { display: inline-block; margin-top: 8px; font: 500 .74rem/1.3 var(--font-mono); padding: 3px 7px; border-radius: 2px; background: var(--c-surface-2); color: var(--c-muted); }
+.anvil-role-lh-reveal-p { margin-top: 8px; max-width: var(--measure); }
+.lh-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 14px; font-size: .9rem; }
+.lh-links a { padding: 3px 0; }
+.ui-card.lh-done { padding: 24px; }
+.lh-done-top { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.anvil-role-lh-score { font: 600 3rem/1 var(--font-display); color: var(--c-brand); font-variant-numeric: lining-nums tabular-nums; }
+.anvil-role-lh-score-h { font: 600 1.2rem/1.3 var(--font-display); color: var(--c-ink); }
+.anvil-role-lh-done-streak { color: var(--c-muted); font-size: .92rem; margin-top: 4px; }
+.lh-share { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 6px; }
+.lh-share-line { flex: 1 1 260px; min-width: 0; font: .8rem/1.5 var(--font-mono); background: var(--c-code); border: 1px solid var(--c-line); border-radius: 2px; padding: 8px 10px; overflow-wrap: anywhere; }
+.ui .lh-recap-h { font-size: 1rem; margin: 18px 0 6px; }
+.lh-recap { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; font-size: .92rem; }
+.lh-recap code { font: .84rem var(--font-mono); background: var(--c-code); border: 1px solid var(--c-line); border-radius: 2px; padding: 1px 5px; margin-right: 6px; overflow-wrap: anywhere; }
+.lh-recap-case { display: block; color: var(--c-muted); font-size: .85rem; }
+.lh-ok, .lh-miss { font: 500 .72rem/1.3 var(--font-mono); padding: 1px 6px; border-radius: 2px; margin-left: 6px; }
+.lh-ok { background: var(--c-good-soft); color: var(--c-good); }
+.lh-miss { background: var(--c-bad-soft); color: var(--c-bad); }
+.lh-done-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+@media (max-width: 720px) { .ui-card.lh-round, .ui-card.lh-done { padding: 18px 16px; } .anvil-role-lh-round-no { margin-left: 0; } }
+/* landing: the Leak Hunt card */
+.ui-card.lp-hunt { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: center; padding: 26px 28px; }
+.ui .lp-hunt h2 { margin: 0 0 8px; }
+.lp-hunt p { color: var(--c-muted); margin: 0 0 16px; max-width: var(--measure); }
+.lp-hunt-art { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.hunt-demo { font: .82rem/1.3 var(--font-mono); padding: 10px 12px; border: 1px solid var(--c-line); border-radius: 2px; background: var(--c-bg); color: var(--c-ink); overflow-wrap: anywhere; }
+.hunt-demo.leak { border: 1px dashed var(--c-bad); background: var(--c-bad-soft); }
+@media (max-width: 720px) { .ui-card.lp-hunt { grid-template-columns: minmax(0, 1fr); padding: 20px 18px; } }
+/* notebook: the Leak Hunt side card */
+a.ui-card.nb-hunt { display: block; text-decoration: none; color: inherit !important; transition: border-color var(--dur-fast) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { a.ui-card.nb-hunt:hover { border-color: var(--c-brand); } }
+.anvil-role-nb-hunt-line { margin-top: 8px; font: 500 .82rem/1.3 var(--font-mono); color: var(--c-accent); }
+.sn-results { margin: 8px 0 0; }
+/* the lemma of the day: a long formula (or raw TeX before KaTeX loads) scrolls inside the card, never the page */
+.nb-lemma { min-width: 0; overflow: hidden; }
+.nb-lemma .ri-tex-host { display: block; max-width: 100%; overflow-x: auto; }
+.ui .nb-lemma-h { overflow-wrap: anywhere; }

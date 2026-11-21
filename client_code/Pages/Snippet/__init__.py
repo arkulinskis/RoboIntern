@@ -25,6 +25,7 @@ class Snippet(SnippetTemplate):
         self.editing = ""
         state.heading(self.title, 1)
         state.set_control_attr(self.code_box, "spellcheck", "false")
+        self.dom_nodes["results_link"].addEventListener("click", self._to_results)
         self.missing.visible = self.body.visible = False
         if not args:
             router.go(router.HOME if state.me() else "commons")
@@ -136,6 +137,17 @@ class Snippet(SnippetTemplate):
         self.predict_cmd.text = "python predict.py" + ("" if v["task"] == "forecast" or m.get("tmpl") == "anomts" else " new.csv")
 
     # ---- actions
+    def _to_results(self, event):
+        """The "Ran it?" link opens #results; this hands Read my results the listing (Add to notes needs it)."""
+        s = self.s
+        target = ""
+        for c in (s.get("spec") or {}).get("columns") or []:
+            if c.get("role") == "target":
+                target = c.get("name") or ""
+        state.store_set("results-ctx", {"task": s.get("task") or "", "model": s.get("model") or "", "target": target,
+                                        "snippet_id": s.get("id"), "title": s.get("title") or "",
+                                        "can_edit": bool(s.get("can_edit"))})
+
     @handle("code", "edit_code")
     def code_edit_code(self, file="train", **event_args):
         self.editing = file or "train"
